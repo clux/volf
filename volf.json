@@ -1,0 +1,17 @@
+{
+  "port": 54857,
+  "github": {
+    "access_token": "personal_access_token_for_homu_app_for_hosting_user",
+    "app_client_id": "client_id_for_homu_app",
+    "app_client_secret": "client_secret_for_homu_app"
+  },
+  "repositories": [
+    {
+      "name": "volf",
+      "owner": "clux",
+      "required_builds": [],
+      "optional_builds": [],
+      "github_secret": "woot"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+[package]
+name = "volf"
+version = "0.0.0"
+authors = ["Eirik Albrigtsen <analsandblaster@gmail.com>"]
+
+[lib]
+name = "volf"
+path = "src/lib.rs"
+
+[[bin]]
+name = "volf"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+clap = "*"
+rustc-serialize = "*"
+log = "*"
+loggerv = "*"
+afterparty = "*"
+hyper = "0.7"
