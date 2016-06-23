@@ -6,9 +6,19 @@
 A github webhook server in the style of [homu](https://github.com/barosl/homu).
 
 ## Usage
-Add [volf](https://crates.io/crates/volf) to `Cargo.toml`.
 
-## [documentation](http://clux.github.io/volf)
+1. Install and run this application somewhere with you own [volf.json](./volf.json)
+
+2. Create a github machine account for volf.  Register a new application in his [account settings](https://github.com/settings/applications), and set OAuth Callback URL to `http://HOST:54857/callback`
+
+3. Add a webhook to your repository:
+
+ - Payload URL: `http://HOST:54857`
+ - Content type: `application/json`
+ - Secret: Corresponding repository's `github.secret` in `volf.json`
+ - Events: Both *Issue* related events + *Pull Request* + *Push*.
+
+4. Wait for @clux to implement stuff. Currently this is just a webhook server.
 
 ## Developing
 To hack on `volf`, make debug builds and convenience link `volf` via `ln -sf $PWD/target/debug/volf /usr/local/bin/volf`.
@@ -19,11 +29,6 @@ When making changes:
 cargo build
 volf
 cargo test # write tests
-```
-
-Before committing:
-
-```sh
 cargo fmt
 ```
 

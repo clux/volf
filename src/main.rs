@@ -34,11 +34,6 @@ fn main() {
     // by default, always show INFO messages for now (+1)
     loggerv::init_with_verbosity(args.occurrences_of("verbose") + 1).unwrap();
 
-    // Synchronize before starting the server if requested
-    if args.is_present("synchronize") {
-        unimplemented!();
-    }
-
     // Force config to exists before allowing remaining actions
     let config = Config::read()
         .map_err(|e| {
@@ -47,6 +42,11 @@ fn main() {
             process::exit(1);
         })
         .unwrap();
+
+    // Synchronize before starting the server if requested
+    if args.is_present("synchronize") {
+        unimplemented!();
+    }
 
     // Start webhook server
     let port = 54857; // TODO: put in cfg
