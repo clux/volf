@@ -4,14 +4,12 @@ extern crate clap;
 extern crate log;
 extern crate loggerv;
 
-extern crate afterparty;
 extern crate hyper;
 
 extern crate volf;
 use volf::Config;
 
-use hyper::Server;
-use afterparty::{Delivery, Event, Hub};
+//use hyper::Server;
 
 use clap::{Arg, App, AppSettings};
 use std::process;
@@ -49,21 +47,8 @@ fn main() {
     }
 
     // Start webhook server
-    let port = 54857; // TODO: put in cfg
-    let addr = format!("0.0.0.0:{}", port);
-    let mut hub = Hub::new();
-    hub.handle("push", |delivery: &Delivery| {
-        info!("rec delivery {:#?}", delivery);
-        match delivery.payload {
-            Event::Push { ref after, ref sender, .. } => {
-                info!("sender {} after {}", sender.login, after)
-            }
-            _ => (),
-        }
-    });
-    let srvc = Server::http(&addr[..])
-        .unwrap()
-        .handle(hub);
+    let addr = format!("0.0.0.0:{}", config.port);
+
     info!("Listening on {}", addr);
     srvc.unwrap();
 
