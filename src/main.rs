@@ -2,14 +2,14 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
-extern crate loggerv;
-
-extern crate hyper;
+extern crate env_logger;
+extern crate pencil;
 
 extern crate volf;
 use volf::Config;
 
-//use hyper::Server;
+use pencil::Pencil;
+use pencil::method::Post;
 
 use clap::{Arg, App, AppSettings};
 use std::process;
@@ -19,24 +19,19 @@ fn main() {
         .version(crate_version!())
         .setting(AppSettings::ColoredHelp)
         .about("volf")
-        .arg(Arg::with_name("verbose")
-            .short("v")
-            .multiple(true)
-            .help("Use verbose output"))
         .arg(Arg::with_name("synchronize")
             .short("s")
             .long("synchronize")
             .help("Re-synchronize github state before starting"))
         .get_matches();
 
-    // by default, always show INFO messages for now (+1)
-    loggerv::init_with_verbosity(args.occurrences_of("verbose") + 1).unwrap();
+    env_logger::init().unwrap();
 
     // Force config to exists before allowing remaining actions
     let config = Config::read()
         .map_err(|e| {
             error!("Configuration error: {}", e);
-            println!("Ensure you have volf.toml is valid");
+            println!("Ensure you have volf.json is valid");
             process::exit(1);
         })
         .unwrap();
@@ -47,9 +42,10 @@ fn main() {
     }
 
     // Start webhook server
+    let mut app = Pencil::new("/");
+    app.route("/github", &[Post], "github", volf::github::hook);
+
     let addr = format!("0.0.0.0:{}", config.port);
-
     info!("Listening on {}", addr);
-    srvc.unwrap();
-
+    app.run(addr.as_str());
 }

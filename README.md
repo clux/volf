@@ -3,7 +3,7 @@
 [![coverage status](http://img.shields.io/coveralls/clux/volf.svg)](https://coveralls.io/r/clux/volf)
 [![crates status](https://img.shields.io/crates/v/volf.svg)](https://crates.io/crates/volf)
 
-A github webhook server in the style of [homu](https://github.com/barosl/homu).
+A github webhook server and pull request approval bot in the style of [homu](https://github.com/barosl/homu).
 
 ## Usage
 
@@ -13,10 +13,10 @@ A github webhook server in the style of [homu](https://github.com/barosl/homu).
 
 3. Add a webhook to your repository:
 
- - Payload URL: `http://HOST:54857`
+ - Payload URL: `http://HOST:54857/github`
  - Content type: `application/json`
  - Secret: Corresponding repository's `github.secret` in `volf.json`
- - Events: Both *Issue* related events + *Pull Request* + *Push*.
+ - Events: *Issue comment* +  *Pull request** + *Push*
 
 4. Wait for @clux to implement stuff. Currently this is just a webhook server.
 
@@ -27,7 +27,7 @@ When making changes:
 
 ```sh
 cargo build
-volf
+RUST_LOG=hyper=info,volf=debug volf
 cargo test # write tests
 cargo fmt
 ```

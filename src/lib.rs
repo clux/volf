@@ -2,8 +2,13 @@
 //! that the `volf` binary relies on to maintain state.
 
 extern crate rustc_serialize;
+
 #[macro_use]
 extern crate log;
+
+#[macro_use]
+extern crate hyper;
+extern crate pencil;
 
 // re-exports
 pub use config::Config;
@@ -11,3 +16,4 @@ pub use errors::{VolfError, VolfResult};
 
 mod config;
 mod errors;
+pub mod github;

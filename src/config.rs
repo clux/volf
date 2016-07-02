@@ -2,7 +2,7 @@ use rustc_serialize::json;
 use std::path::Path;
 use std::fs;
 use std::vec::Vec;
-use std::io::prelude::*;
+use std::io::prelude::Read;
 use errors::{VolfError, VolfResult};
 
 /// Repository data
@@ -50,7 +50,7 @@ pub struct Config {
 impl Config {
     /// Read and deserialize a Config from volf.json
     pub fn read() -> VolfResult<Config> {
-        let cfg_path = Path::new(".").join("volf.json");
+        let cfg_path = Path::new("volf.json");
         if !cfg_path.exists() {
             return Err(VolfError::MissingConfig);
         }
