@@ -3,7 +3,8 @@ use pencil::{Request, Response, PencilResult};
 use std::io::Read;
 use VolfResult;
 
-// Small helper structs for Event
+// -----------------------------------------------------------------------------
+// Minor structs parts of various event types
 
 #[derive(RustcDecodable, Debug)]
 struct User {
@@ -25,11 +26,19 @@ struct Comment {
 }
 
 #[derive(RustcDecodable, Debug)]
+struct PullRequestIssue {
+    /// Unique PR number typically refernced by #n
+    number: u64,
+}
+
+#[derive(RustcDecodable, Debug)]
 struct Issue {
     /// Unique PR number typically refernced by #n
     number: u64,
     /// Body of the original issue
     body: String,
+    /// Struct that is set if the Issue is a PR
+    pull_request: Option<PullRequestIssue>
 }
 
 #[derive(RustcDecodable, Debug)]
@@ -57,6 +66,9 @@ struct PullRequestInner {
     /// State of destination (master typically)
     base: PullRequestRef,
 }
+
+// -----------------------------------------------------------------------------
+// Main Event types handled
 
 /// Subset of github events that we need
 #[derive(RustcDecodable, Debug)]
@@ -114,6 +126,53 @@ pub struct IssueComment {
 }
 // TODO: Status ? probably only needed if hooks talk to github directly
 
+// -----------------------------------------------------------------------------
+// event handlers
+
+fn handle_issue_comment(ev: &IssueComment) -> VolfResult<()> {
+    if ev.action == "created" && ev.issue.pull_request.is_some() {
+        info!("Comment on {}#{} by {} - {}",
+            ev.repository.full_name,
+            ev.issue.number,
+            ev.sender.login,
+            ev.comment.body);
+    }
+    Ok(())
+}
+
+fn handle_pull_request(ev: &PullRequest) -> VolfResult<()> {
+    Ok(())
+}
+
+fn handle_push(ev: &Push) -> VolfResult<()> {
+    Ok(())
+}
+
+fn handle_event(payload: &String, event: &str) -> VolfResult<()> {
+    match event {
+        "pull_request" => {
+            let res: PullRequest = try!(json::decode(&payload));
+            debug!("github pull_request : {:?}", res);
+            try!(handle_pull_request(&res));
+        }
+        "push" => {
+            let res: Push = try!(json::decode(&payload));
+            debug!("github push : {:?}", res);
+            try!(handle_push(&res));
+        }
+        "issue_comment" => {
+            let res: IssueComment = try!(json::decode(&payload));
+            debug!("github issue_comment : {:?}", res);
+            try!(handle_issue_comment(&res));
+        }
+        _ => warn!("{} event unhandled - you are sending more than you need", event),
+    }
+    Ok(())
+}
+
+// -----------------------------------------------------------------------------
+// webhook server handler
+
 /// signature for request
 /// see [this document](https://developer.github.com/webhooks/securing/) for more information
 header! {(XHubSignature, "X-Hub-Signature") => [String]}
@@ -124,27 +183,6 @@ header! {(XGithubEvent, "X-Github-Event") => [String]}
 
 /// unique id for each delivery
 header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
-
-
-pub fn handle_event(payload: &String, event: &str) -> VolfResult<()> {
-    debug!("handle event for {}", event);
-    match event {
-        "pull_request" => {
-            let res: PullRequest = try!(json::decode(&payload));
-            debug!("github pull_request : {:?}", res)
-        }
-        "push" => {
-            let res: Push = try!(json::decode(&payload));
-            debug!("github push : {:?}", res);
-        }
-        "issue_comment" => {
-            let res: IssueComment = try!(json::decode(&payload));
-            debug!("github issue_comment : {:?}", res)
-        }
-        _ => trace!("unhandled {} event", event),
-    }
-    Ok(())
-}
 
 /// Main webhook handler
 pub fn hook(req: &mut Request) -> PencilResult {
@@ -161,7 +199,10 @@ pub fn hook(req: &mut Request) -> PencilResult {
             // TODO: verify signature sha1 value == sha1(github.secret)
             trace!("signature: {}", signature);
             trace!("id {}", id);
-            let _ = handle_event(&payload, event.as_str());
+            let _ = handle_event(&payload, event.as_str()).map_err(|e| {
+                warn!("Failed to handle '{}' event", event);
+                warn!("Caught {}", e);
+            });
         }
     }
     Ok(Response::new_empty())
