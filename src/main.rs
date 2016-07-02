@@ -9,7 +9,6 @@ extern crate volf;
 use volf::Config;
 
 use pencil::Pencil;
-use pencil::method::Post;
 
 use clap::{Arg, App, AppSettings};
 use std::process;
@@ -43,7 +42,7 @@ fn main() {
 
     // Start webhook server
     let mut app = Pencil::new("/");
-    app.route("/github", &[Post], "github", volf::github::hook);
+    app.post("/github", "github", volf::github::hook);
 
     let addr = format!("0.0.0.0:{}", config.port);
     info!("Listening on {}", addr);

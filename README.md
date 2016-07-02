@@ -16,7 +16,7 @@ A github webhook server and pull request approval bot in the style of [homu](htt
  - Payload URL: `http://HOST:54857/github`
  - Content type: `application/json`
  - Secret: Corresponding repository's `github.secret` in `volf.json`
- - Events: *Issue comment* +  *Pull request** + *Push*
+ - Events: *Issue comment* +  *Pull request* + *Push*
 
 4. Wait for @clux to implement stuff. Currently this is just a webhook server.
 

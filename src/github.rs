@@ -124,6 +124,11 @@ pub struct IssueComment {
     /// Sender of the comment
     sender: User,
 }
+#[derive(RustcDecodable, Debug)]
+pub struct Ping {
+    /// Github Zen
+    zen: String,
+}
 // TODO: Status ? probably only needed if hooks talk to github directly
 
 // -----------------------------------------------------------------------------
@@ -164,6 +169,10 @@ fn handle_event(payload: &String, event: &str) -> VolfResult<()> {
             let res: IssueComment = try!(json::decode(&payload));
             debug!("github issue_comment : {:?}", res);
             try!(handle_issue_comment(&res));
+        }
+        "ping" => {
+            let res: Ping = try!(json::decode(&payload));
+            debug!("github ping event - '{}'", res.zen);
         }
         _ => warn!("{} event unhandled - you are sending more than you need", event),
     }

@@ -19,3 +19,7 @@ log = "*"
 env_logger = "*"
 pencil = "*"
 hyper = "*"
+
+[[test]]
+harness = false
+name = "testmain"
