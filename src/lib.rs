@@ -13,7 +13,9 @@ extern crate pencil;
 // re-exports
 pub use config::Config;
 pub use errors::{VolfError, VolfResult};
+pub use pullrequest::Pull;
 
 mod config;
 mod errors;
 pub mod github;
+mod pullrequest;

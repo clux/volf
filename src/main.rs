@@ -6,12 +6,13 @@ extern crate env_logger;
 extern crate pencil;
 
 extern crate volf;
-use volf::Config;
+use volf::{Config, Pull};
 
 use pencil::Pencil;
 
 use clap::{Arg, App, AppSettings};
 use std::process;
+use std::sync::Arc;
 
 fn main() {
     let args = App::new("volf")
@@ -39,6 +40,7 @@ fn main() {
     if args.is_present("synchronize") {
         unimplemented!();
     }
+    let state : Arc<Vec<Pull>> = Arc::new(vec![]);
 
     // Start webhook server
     let mut app = Pencil::new("/");
