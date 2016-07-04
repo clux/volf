@@ -1,6 +1,8 @@
 use rustc_serialize::json;
 use pencil::{Request, Response, PencilResult};
 use std::io::Read;
+use std::collections::HashMap;
+
 use VolfResult;
 
 // -----------------------------------------------------------------------------
@@ -72,7 +74,7 @@ struct PullRequestInner {
 
 /// Subset of github events that we need
 #[derive(RustcDecodable, Debug)]
-struct PullRequest {
+pub struct PullRequest {
     /// Action taken (opened/reopened/closed/assigned/unassigned)
     action: String,
     /// Unique PR number typically refernced by #n
@@ -216,3 +218,162 @@ pub fn hook(req: &mut Request) -> PencilResult {
     }
     Ok(Response::new_empty())
 }
+
+
+// -----------------------------------------------------------------------------
+// experiment
+
+/// Wrapper type for all handled events
+//pub enum Event {
+//    EPullRequest(PullRequest),
+//    EPush(Push),
+//    EPing(Ping),
+//    EIssueComment(IssueComment),
+//}
+
+//#[derive(Debug)]
+//pub struct Delivery<'a T> {
+//    pub id: &'a str,
+//    pub event: &'a str,
+//    pub unparsed_payload: &'a str,
+//}
+//
+//impl<'a T> Delivery<'a T> {
+//    pub fn new(id: &'a str, event: &'a str) -> Option<Delivery<'a>> {
+        //let patched = events::patch_payload_json(event, payload);
+        //match serde_json::from_str::<Event>(&patched) {
+        //    Ok(parsed) => {
+        //        Some(Delivery {
+        //            id: id,
+        //            event: event,
+        //            payload: parsed,
+        //            unparsed_payload: payload,
+        //            signature: signature,
+        //        })
+        //    }
+        //    Err(e) => {
+        //        error!(
+        //            "failed to parse json {:?}\n{:#?}", e, patched);
+        //        None
+        //    },
+        //}
+//        None
+//    }
+//}
+
+
+pub trait PushHook: Send + Sync {
+    fn handle(&self, delivery: &Push);
+}
+pub trait PullRequestHook: Send + Sync {
+    fn handle(&self, delivery: &PullRequest);
+}
+pub trait IssueCommentHook: Send + Sync {
+    fn handle(&self, delivery: &IssueComment);
+}
+impl<F> PushHook for F where F: Fn(&Push), F: Sync + Send {
+    fn handle(&self, delivery: &Push) {
+        self(delivery)
+    }
+}
+impl<F> PullRequestHook for F where F: Fn(&PullRequest), F: Sync + Send {
+    fn handle(&self, delivery: &PullRequest) {
+        self(delivery)
+    }
+}
+impl<F> IssueCommentHook for F where F: Fn(&IssueComment), F: Sync + Send {
+    fn handle(&self, delivery: &IssueComment) {
+        self(delivery)
+    }
+}
+
+
+/// A hub is a registry of hooks
+#[derive(Default)]
+pub struct Hub {
+    push_hook: Option<Box<PushHook>>,
+    pull_request_hook: Option<Box<PullRequestHook>>,
+    issue_comment_hook: Option<Box<IssueCommentHook>>,
+    //hooks: HashMap<String, Box<Hook>>,
+}
+
+impl Hub {
+    /// construct a new hub instance
+    pub fn new() -> Hub {
+        Hub { ..Default::default() }
+    }
+    // register a hook handlers on an event
+    pub fn on_push<H>(&mut self, hook: H) where H: PushHook + 'static {
+        self.push_hook = Some(Box::new(hook));
+    }
+    pub fn on_pull_request<H>(&mut self, hook: H) where H: PullRequestHook + 'static {
+        self.pull_request_hook = Some(Box::new(hook));
+    }
+    pub fn on_issue_comment<H>(&mut self, hook: H) where H: IssueCommentHook + 'static {
+        self.issue_comment_hook = Some(Box::new(hook));
+    }
+
+
+    /// deliver an event to the registered hook
+    pub fn deliver(&self, event: &str, payload: &str) {
+        match event {
+            "pull_request" => {
+                if let Some(ref hook) = self.pull_request_hook {
+                    if let Ok(res) = json::decode::<PullRequest>(&payload) {
+                        debug!("github pull_request : {:?}", res);
+                        hook.handle(&res);
+                    }
+                }
+            }
+            //"push" => {
+            //    let res: Push = try!(json::decode(&payload));
+            //    debug!("github push : {:?}", res);
+            //    try!(handle_push(&res));
+            //}
+            //"issue_comment" => {
+            //    let res: IssueComment = try!(json::decode(&payload));
+            //    debug!("github issue_comment : {:?}", res);
+            //    try!(handle_issue_comment(&res));
+            //}
+            //"ping" => {
+            //    let res: Ping = try!(json::decode(&payload));
+            //    debug!("github ping event - '{}'", res.zen);
+            //}
+            _ => warn!("{} event unhandled - you are sending more than you need", event),
+        }
+        //if let Some(hook) = self.hook(delivery) {
+        //    hook.handle(&delivery)
+        //}
+    }
+}
+
+
+//impl Handler for Hub {
+//    fn handle(&self, mut req: Request, res: Response) {
+//        let mut payload = String::new();
+//        let headers = req.headers().clone();
+//        if let (Some(&XGithubEvent(ref event)),
+//                Some(&XGithubDelivery(ref id)),
+//                Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
+//                                                        headers.get::<XGithubDelivery>(),
+//                                                        headers.get::<XHubSignature>()) {
+//            if let Ok(_) = req.read_to_string(&mut payload) {
+//                debug!("github event: {}", event);
+//                // TODO: verify signature sha1 value == sha1(github.secret)
+//                trace!("signature: {}", signature);
+//                trace!("id {}", id);
+//
+//                match Delivery::new(id, event) {
+//                    Some(delivery) => self.deliver(&delivery),
+//                    _ => {
+//                        error!("failed to parse event {:?} for delivery {:?}",
+//                               event,
+//                               delivery)
+//                    }
+//                }
+//            }
+//        }
+//        let _ = res.send(b"ok");
+//        ()
+//    }
+//}
