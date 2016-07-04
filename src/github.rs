@@ -1,5 +1,5 @@
 use rustc_serialize::json;
-use pencil::{Request, Response, PencilResult};
+use hyper::server::{Handler, Request, Response};
 use std::io::Read;
 use std::collections::HashMap;
 
@@ -195,72 +195,8 @@ header! {(XGithubEvent, "X-Github-Event") => [String]}
 /// unique id for each delivery
 header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
 
-/// Main webhook handler
-pub fn hook(req: &mut Request) -> PencilResult {
-    let mut payload = String::new();
-    // Expect the three github headers:
-    let headers = req.headers().clone();
-    if let (Some(&XGithubEvent(ref event)),
-            Some(&XGithubDelivery(ref id)),
-            Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
-                                                    headers.get::<XGithubDelivery>(),
-                                                    headers.get::<XHubSignature>()) {
-        if let Ok(_) = req.read_to_string(&mut payload) {
-            debug!("github event: {}", event);
-            // TODO: verify signature sha1 value == sha1(github.secret)
-            trace!("signature: {}", signature);
-            trace!("id {}", id);
-            let _ = handle_event(&payload, event.as_str()).map_err(|e| {
-                warn!("Failed to handle '{}' event", event);
-                warn!("Caught {}", e);
-            });
-        }
-    }
-    Ok(Response::new_empty())
-}
-
-
 // -----------------------------------------------------------------------------
 // experiment
-
-/// Wrapper type for all handled events
-//pub enum Event {
-//    EPullRequest(PullRequest),
-//    EPush(Push),
-//    EPing(Ping),
-//    EIssueComment(IssueComment),
-//}
-
-//#[derive(Debug)]
-//pub struct Delivery<'a T> {
-//    pub id: &'a str,
-//    pub event: &'a str,
-//    pub unparsed_payload: &'a str,
-//}
-//
-//impl<'a T> Delivery<'a T> {
-//    pub fn new(id: &'a str, event: &'a str) -> Option<Delivery<'a>> {
-        //let patched = events::patch_payload_json(event, payload);
-        //match serde_json::from_str::<Event>(&patched) {
-        //    Ok(parsed) => {
-        //        Some(Delivery {
-        //            id: id,
-        //            event: event,
-        //            payload: parsed,
-        //            unparsed_payload: payload,
-        //            signature: signature,
-        //        })
-        //    }
-        //    Err(e) => {
-        //        error!(
-        //            "failed to parse json {:?}\n{:#?}", e, patched);
-        //        None
-        //    },
-        //}
-//        None
-//    }
-//}
-
 
 pub trait PushHook: Send + Sync {
     fn handle(&self, delivery: &Push);
@@ -270,6 +206,9 @@ pub trait PullRequestHook: Send + Sync {
 }
 pub trait IssueCommentHook: Send + Sync {
     fn handle(&self, delivery: &IssueComment);
+}
+pub trait PingHook: Send + Sync {
+    fn handle(&self, delivery: &Ping);
 }
 impl<F> PushHook for F where F: Fn(&Push), F: Sync + Send {
     fn handle(&self, delivery: &Push) {
@@ -286,7 +225,11 @@ impl<F> IssueCommentHook for F where F: Fn(&IssueComment), F: Sync + Send {
         self(delivery)
     }
 }
-
+impl<F> PingHook for F where F: Fn(&Ping), F: Sync + Send {
+    fn handle(&self, delivery: &Ping) {
+        self(delivery)
+    }
+}
 
 /// A hub is a registry of hooks
 #[derive(Default)]
@@ -294,7 +237,7 @@ pub struct Hub {
     push_hook: Option<Box<PushHook>>,
     pull_request_hook: Option<Box<PullRequestHook>>,
     issue_comment_hook: Option<Box<IssueCommentHook>>,
-    //hooks: HashMap<String, Box<Hook>>,
+    ping_hook: Option<Box<PingHook>>,
 }
 
 impl Hub {
@@ -312,10 +255,13 @@ impl Hub {
     pub fn on_issue_comment<H>(&mut self, hook: H) where H: IssueCommentHook + 'static {
         self.issue_comment_hook = Some(Box::new(hook));
     }
+    pub fn on_ping<H>(&mut self, hook: H) where H: PingHook + 'static {
+        self.ping_hook = Some(Box::new(hook));
+    }
 
 
-    /// deliver an event to the registered hook
-    pub fn deliver(&self, event: &str, payload: &str) {
+    /// deliver an event to the registered hook via Handler
+    fn deliver(&self, event: &str, payload: &str) {
         match event {
             "pull_request" => {
                 if let Some(ref hook) = self.pull_request_hook {
@@ -324,56 +270,55 @@ impl Hub {
                         hook.handle(&res);
                     }
                 }
-            }
-            //"push" => {
-            //    let res: Push = try!(json::decode(&payload));
-            //    debug!("github push : {:?}", res);
-            //    try!(handle_push(&res));
-            //}
-            //"issue_comment" => {
-            //    let res: IssueComment = try!(json::decode(&payload));
-            //    debug!("github issue_comment : {:?}", res);
-            //    try!(handle_issue_comment(&res));
-            //}
-            //"ping" => {
-            //    let res: Ping = try!(json::decode(&payload));
-            //    debug!("github ping event - '{}'", res.zen);
-            //}
+            },
+            "push" => {
+                if let Some(ref hook) = self.push_hook {
+                    if let Ok(res) = json::decode::<Push>(&payload) {
+                        debug!("github push : {:?}", res);
+                        hook.handle(&res);
+                    }
+                }
+            },
+            "issue_comment" => {
+                if let Some(ref hook) = self.issue_comment_hook {
+                    if let Ok(res) = json::decode::<IssueComment>(&payload) {
+                        debug!("github issue_comment : {:?}", res);
+                        hook.handle(&res);
+                    }
+                }
+            },
+            "ping" => {
+                if let Some(ref hook) = self.ping_hook {
+                    if let Ok(res) = json::decode::<Ping>(&payload) {
+                        debug!("github ping : {:?}", res);
+                        hook.handle(&res);
+                    }
+                }
+            },
             _ => warn!("{} event unhandled - you are sending more than you need", event),
         }
-        //if let Some(hook) = self.hook(delivery) {
-        //    hook.handle(&delivery)
-        //}
     }
 }
 
 
-//impl Handler for Hub {
-//    fn handle(&self, mut req: Request, res: Response) {
-//        let mut payload = String::new();
-//        let headers = req.headers().clone();
-//        if let (Some(&XGithubEvent(ref event)),
-//                Some(&XGithubDelivery(ref id)),
-//                Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
-//                                                        headers.get::<XGithubDelivery>(),
-//                                                        headers.get::<XHubSignature>()) {
-//            if let Ok(_) = req.read_to_string(&mut payload) {
-//                debug!("github event: {}", event);
-//                // TODO: verify signature sha1 value == sha1(github.secret)
-//                trace!("signature: {}", signature);
-//                trace!("id {}", id);
-//
-//                match Delivery::new(id, event) {
-//                    Some(delivery) => self.deliver(&delivery),
-//                    _ => {
-//                        error!("failed to parse event {:?} for delivery {:?}",
-//                               event,
-//                               delivery)
-//                    }
-//                }
-//            }
-//        }
-//        let _ = res.send(b"ok");
-//        ()
-//    }
-//}
+impl Handler for Hub {
+    fn handle(&self, mut req: Request, res: Response) {
+        let mut payload = String::new();
+        let headers = req.headers.clone();
+        if let (Some(&XGithubEvent(ref event)),
+                Some(&XGithubDelivery(ref id)),
+                Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
+                                                        headers.get::<XGithubDelivery>(),
+                                                        headers.get::<XHubSignature>()) {
+            if let Ok(_) = req.read_to_string(&mut payload) {
+                debug!("github event: {}", event);
+                // TODO: verify signature sha1 value == sha1(github.secret)
+                trace!("signature: {}", signature);
+                trace!("id {}", id);
+                self.deliver(event, &payload);
+            }
+        }
+        let _ = res.send(b"ok");
+        ()
+    }
+}

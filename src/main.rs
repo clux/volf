@@ -3,12 +3,13 @@ extern crate clap;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate pencil;
+extern crate hyper;
+
+use hyper::Server;
 
 extern crate volf;
 use volf::{Config, Pull};
-
-use pencil::Pencil;
+use volf::github::{Hub, Push, PullRequest, IssueComment};
 
 use clap::{Arg, App, AppSettings};
 use std::process;
@@ -43,10 +44,18 @@ fn main() {
     let state : Arc<Vec<Pull>> = Arc::new(vec![]);
 
     // Start webhook server
-    let mut app = Pencil::new("/");
-    app.post("/github", "github", volf::github::hook);
+    let mut hub = Hub::new();
+    hub.on_push(|data: &Push| {
+        info!("got push {:?}", data);
+    });
+    hub.on_pull_request(|data: &PullRequest| {
+        info!("got pr {:?}", data);
+    });
+    hub.on_issue_comment(|data: &IssueComment| {
+        info!("got issue comment {:?}", data);
+    });
 
     let addr = format!("0.0.0.0:{}", config.port);
     info!("Listening on {}", addr);
-    app.run(addr.as_str());
+    let srv = Server::http(&addr.as_str()).unwrap().handle(hub);
 }

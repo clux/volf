@@ -17,7 +17,6 @@ clap = "*"
 rustc-serialize = "*"
 log = "*"
 env_logger = "*"
-pencil = "*"
 hyper = "*"
 
 [[test]]

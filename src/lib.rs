@@ -8,7 +8,6 @@ extern crate log;
 
 #[macro_use]
 extern crate hyper;
-extern crate pencil;
 
 // re-exports
 pub use config::Config;

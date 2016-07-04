@@ -1,12 +1,14 @@
 extern crate volf;
+extern crate hyper;
 
 #[macro_use]
 extern crate log;
 extern crate env_logger;
 
-extern crate pencil;
-
 use volf::Config;
+use volf::github::{Hub, Push, PullRequest, IssueComment};
+
+use hyper::Server;
 
 use std::env;
 
@@ -22,9 +24,9 @@ fn main() {
     has_config();
     println!("ok {} has_config", i);
 
-    //i += 1;
-    //test_ping_event();
-    //println!("ok {} test_ping_event", i);
+    i += 1;
+    test_ping_event();
+    println!("ok {} test_ping_event", i);
 }
 
 fn has_config() {
@@ -33,19 +35,17 @@ fn has_config() {
 }
 
 fn test_ping_event() {
-    use pencil::Pencil;
     use std::thread;
     use std::time::Duration;
 
     let child = thread::spawn(|| {
         let cfg = Config::read().unwrap();
-        let mut app = Pencil::new("/");
-        app.post("/github", "github", volf::github::hook);
+        let mut hub = Hub::new();
+        // TODO: ping handler
         let addr = format!("0.0.0.0:{}", cfg.port);
-        app.run(addr.as_str());
+        //let srv = Server::http(&addr.as_str()).unwrap().handle(hub);
     });
     // TODO: perform github request to hit the ping hook
-    //thread::sleep(Duration::from_millis(500));
-    // would like to close the server  after this, but not supported by pencil
-    // https://github.com/fengsp/pencil/issues/26
+    thread::sleep(Duration::from_millis(500));
+    // Then close the server.. probably need to Arc up the server;
 }
