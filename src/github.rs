@@ -1,72 +1,69 @@
 use rustc_serialize::json;
-use hyper::server::{Handler, Request, Response};
+use hyper::server::{Request, Response};
 use std::io::Read;
-use std::collections::HashMap;
-
-use VolfResult;
 
 // -----------------------------------------------------------------------------
 // Minor structs parts of various event types
 
 #[derive(RustcDecodable, Debug)]
-struct User {
+pub struct User {
     /// Unique github user name
-    login: String,
+    pub login: String,
 }
 #[derive(RustcDecodable, Debug)]
-struct Repository {
+pub struct Repository {
     /// Owner and repo name joined by a slash
-    full_name: String,
+    pub full_name: String,
 }
 
 #[derive(RustcDecodable, Debug)]
-struct Comment {
+pub struct Comment {
     /// User creating the comment
-    user: User,
+    pub user: User,
     /// Body of the comment
-    body: String,
+    pub body: String,
 }
 
 #[derive(RustcDecodable, Debug)]
-struct PullRequestIssue {
+pub struct PullRequestIssue {
     /// Unique PR number typically refernced by #n
-    number: u64,
+    pub number: u64,
 }
 
 #[derive(RustcDecodable, Debug)]
-struct Issue {
+pub struct Issue {
     /// Unique PR number typically refernced by #n
-    number: u64,
+    pub number: u64,
     /// Body of the original issue
-    body: String,
+    pub body: String,
     /// Struct that is set if the Issue is a PR
-    pull_request: Option<PullRequestIssue>
+    pub pull_request: Option<PullRequestIssue>
 }
 
 #[derive(RustcDecodable, Debug)]
-struct PullRequestRef {
+pub struct PullRequestRef {
     /// Ref name (only works with serde atm due to reserved keyword..)
     // _ref: String,
     /// Changeset id
-    sha: String,
+    pub sha: String,
     /// Owning user
-    user: User,
+    pub user: User,
     /// Respository containing the ref
-    repo: Repository,
+    pub repo: Repository,
 }
 
 #[derive(RustcDecodable, Debug)]
-struct PullRequestInner {
+pub struct PullRequestInner {
     /// Title text
-    title: String,
+    pub title: String,
     /// State open/closed
-    state: String,
+    pub state: String,
     /// User opening PR
-    user: User,
+    pub user: User,
     /// State of head (branch/fork)
-    head: PullRequestRef,
+    pub head: PullRequestRef,
     /// State of destination (master typically)
-    base: PullRequestRef,
+    pub base: PullRequestRef,
 }
 
 // -----------------------------------------------------------------------------
@@ -76,127 +73,65 @@ struct PullRequestInner {
 #[derive(RustcDecodable, Debug)]
 pub struct PullRequest {
     /// Action taken (opened/reopened/closed/assigned/unassigned)
-    action: String,
+    pub action: String,
     /// Unique PR number typically refernced by #n
-    number: u64,
+    pub number: u64,
     /// All PR related data
-    pull_request: PullRequestInner,
+    pub pull_request: PullRequestInner,
     /// Location of repository that contain the PR
-    repository: Repository,
+    pub repository: Repository,
     /// Poster of PR
-    sender: User,
+    pub sender: User,
     /// Body of PR (not sent as a normal Comment struct)
-    body: String,
+    pub body: String,
 }
 // review comments (think these are only comments on specific lines)
 // ignore these for now
 // PullRequestReviewComment {
 //    /// Action taken (created is the only event we expect)
-//    action: String,
+//    pub action: String,
 //    /// Comment info
-//    comment: Comment,
+//    pub comment: Comment,
 //    /// Repository of review comment
-//    repository: Repository,
+//    pub repository: Repository,
 //    /// Sender of review comment
-//    sender: User,
+//    pub sender: User,
 // }
 #[derive(RustcDecodable, Debug)]
 pub struct Push {
     /// Ref name  (only works with serde atm due to reserved keyword..)
     // _ref: String,
     /// Changeset id of last change pushed
-    after: String,
+    pub after: String,
     /// The sha before the push
-    before: String,
+    pub before: String,
     /// Repository pushed to
-    repository: Repository,
+    pub repository: Repository,
     /// User sending the change
-    sender: User, // we only use login anyway
+    pub sender: User, // we only use login anyway
 }
 #[derive(RustcDecodable, Debug)]
 pub struct IssueComment {
     /// Action taken (created is the only action we expect)
-    action: String,
+    pub action: String,
     /// Comment data we actually care about
-    comment: Comment,
+    pub comment: Comment,
     /// Related issue (contains the number, crucially)
-    issue: Issue,
+    pub issue: Issue,
     // Repository the relavant issue was in
-    repository: Repository,
+    pub repository: Repository,
     /// Sender of the comment
-    sender: User,
+    pub sender: User,
 }
 #[derive(RustcDecodable, Debug)]
 pub struct Ping {
     /// Github Zen
-    zen: String,
+    pub zen: String,
 }
 // TODO: Status ? probably only needed if hooks talk to github directly
 
 // -----------------------------------------------------------------------------
-// event handlers
-
-fn handle_issue_comment(ev: &IssueComment) -> VolfResult<()> {
-    if ev.action == "created" && ev.issue.pull_request.is_some() {
-        info!("Comment on {}#{} by {} - {}",
-            ev.repository.full_name,
-            ev.issue.number,
-            ev.sender.login,
-            ev.comment.body);
-    }
-    Ok(())
-}
-
-fn handle_pull_request(ev: &PullRequest) -> VolfResult<()> {
-    Ok(())
-}
-
-fn handle_push(ev: &Push) -> VolfResult<()> {
-    Ok(())
-}
-
-fn handle_event(payload: &String, event: &str) -> VolfResult<()> {
-    match event {
-        "pull_request" => {
-            let res: PullRequest = try!(json::decode(&payload));
-            debug!("github pull_request : {:?}", res);
-            try!(handle_pull_request(&res));
-        }
-        "push" => {
-            let res: Push = try!(json::decode(&payload));
-            debug!("github push : {:?}", res);
-            try!(handle_push(&res));
-        }
-        "issue_comment" => {
-            let res: IssueComment = try!(json::decode(&payload));
-            debug!("github issue_comment : {:?}", res);
-            try!(handle_issue_comment(&res));
-        }
-        "ping" => {
-            let res: Ping = try!(json::decode(&payload));
-            debug!("github ping event - '{}'", res.zen);
-        }
-        _ => warn!("{} event unhandled - you are sending more than you need", event),
-    }
-    Ok(())
-}
-
-// -----------------------------------------------------------------------------
-// webhook server handler
-
-/// signature for request
-/// see [this document](https://developer.github.com/webhooks/securing/) for more information
-header! {(XHubSignature, "X-Hub-Signature") => [String]}
-
-/// name of Github event
-/// see [this document](https://developer.github.com/webhooks/#events) for available types
-header! {(XGithubEvent, "X-Github-Event") => [String]}
-
-/// unique id for each delivery
-header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
-
-// -----------------------------------------------------------------------------
-// experiment
+// event handler traits
 
 pub trait PushHook: Send + Sync {
     fn handle(&self, delivery: &Push);
@@ -231,6 +166,9 @@ impl<F> PingHook for F where F: Fn(&Ping), F: Sync + Send {
     }
 }
 
+// -----------------------------------------------------------------------------
+// main event handler
+
 /// A hub is a registry of hooks
 #[derive(Default)]
 pub struct Hub {
@@ -262,6 +200,7 @@ impl Hub {
 
     /// deliver an event to the registered hook via Handler
     fn deliver(&self, event: &str, payload: &str) {
+        // probably is a nicer way to do this, but can't think of one atm..
         match event {
             "pull_request" => {
                 if let Some(ref hook) = self.pull_request_hook {
@@ -300,9 +239,25 @@ impl Hub {
     }
 }
 
+// -----------------------------------------------------------------------------
+// webhook server handler
 
-impl Handler for Hub {
-    fn handle(&self, mut req: Request, res: Response) {
+/// signature for request
+/// see [this document](https://developer.github.com/webhooks/securing/) for more information
+header! {(XHubSignature, "X-Hub-Signature") => [String]}
+
+/// name of Github event
+/// see [this document](https://developer.github.com/webhooks/#events) for available types
+header! {(XGithubEvent, "X-Github-Event") => [String]}
+
+/// unique id for each delivery
+header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
+
+/// server handler equivalent to a hyper::Handler
+///
+/// This is meant to be used by reroute and is thus not implementing Handler itself
+impl Hub {
+    pub fn handler(&self, mut req: Request, res: Response) {
         let mut payload = String::new();
         let headers = req.headers.clone();
         if let (Some(&XGithubEvent(ref event)),
@@ -318,7 +273,6 @@ impl Handler for Hub {
                 self.deliver(event, &payload);
             }
         }
-        let _ = res.send(b"ok");
-        ()
+        res.send(b"ok").ok();
     }
 }

@@ -4,12 +4,15 @@ extern crate clap;
 extern crate log;
 extern crate env_logger;
 extern crate hyper;
+extern crate reroute;
 
 use hyper::Server;
+use hyper::server::{Request, Response};
+use reroute::{Captures, Router};
 
 extern crate volf;
 use volf::{Config, Pull};
-use volf::github::{Hub, Push, PullRequest, IssueComment};
+use volf::github::{Hub, Push, PullRequest, IssueComment, Ping};
 
 use clap::{Arg, App, AppSettings};
 use std::process;
@@ -54,8 +57,17 @@ fn main() {
     hub.on_issue_comment(|data: &IssueComment| {
         info!("got issue comment {:?}", data);
     });
+    hub.on_ping(|data: &Ping| {
+        info!("Ping - {}", data.zen);
+    });
+
+    let mut router = Router::new();
+    router.post(r"/github", move |req: Request, res: Response, _: Captures| {
+        hub.handler(req, res)
+    });
+    router.finalize().unwrap();
 
     let addr = format!("0.0.0.0:{}", config.port);
     info!("Listening on {}", addr);
-    let srv = Server::http(&addr.as_str()).unwrap().handle(hub);
+    Server::http(&addr.as_str()).unwrap().handle(router).unwrap();
 }

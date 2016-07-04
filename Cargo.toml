@@ -18,6 +18,7 @@ rustc-serialize = "*"
 log = "*"
 env_logger = "*"
 hyper = "*"
+reroute = "*"
 
 [[test]]
 harness = false
