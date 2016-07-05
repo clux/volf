@@ -1,8 +1,7 @@
 use rustc_serialize::json;
 use hyper::server::{Request, Response};
 use std::io::Read;
-use std::sync::{Arc, Mutex};
-use super::{PullRequestState, Pull};
+use super::{PullRequestState, Pull, VolfResult};
 
 // -----------------------------------------------------------------------------
 // Minor structs parts of various event types
@@ -133,117 +132,76 @@ pub struct Ping {
 // TODO: Status ? probably only needed if hooks talk to github directly
 
 // -----------------------------------------------------------------------------
-// event handler traits
+// event handlers
 
-pub trait PushHook: Send + Sync {
-    fn handle(&self, state: &PullRequestState, data: &Push);
-}
-pub trait PullRequestHook: Send + Sync {
-    fn handle(&self, state: &PullRequestState, data: &PullRequest);
-}
-pub trait IssueCommentHook: Send + Sync {
-    fn handle(&self, state: &PullRequestState, data: &IssueComment);
-}
-pub trait PingHook: Send + Sync {
-    fn handle(&self, state: &PullRequestState, data: &Ping);
-}
-impl<F> PushHook for F where F: Fn(&PullRequestState, &Push), F: Sync + Send {
-    fn handle(&self, state: &PullRequestState, data: &Push) {
-        self(state, data)
-    }
-}
-impl<F> PullRequestHook for F where F: Fn(&PullRequestState, &PullRequest), F: Sync + Send {
-    fn handle(&self, state: &PullRequestState, data: &PullRequest) {
-        self(state, data)
-    }
-}
-impl<F> IssueCommentHook for F where F: Fn(&PullRequestState, &IssueComment), F: Sync + Send {
-    fn handle(&self, state: &PullRequestState, data: &IssueComment) {
-        self(state, data)
-    }
-}
-impl<F> PingHook for F where F: Fn(&PullRequestState, &Ping), F: Sync + Send {
-    fn handle(&self, state: &PullRequestState, data: &Ping) {
-        self(state, data)
-    }
+fn handle_push(_: &PullRequestState, _: &Push) -> VolfResult<()> {
+    // TODO: need `ref` key here to match up with a pr
+    Ok(())
 }
 
-// -----------------------------------------------------------------------------
-// main event handler
-
-/// A hub is a registry of hooks
-//#[derive(Default)] (CAN DO THIS on 1.10)
-pub struct Hub {
-    state: Arc<PullRequestState>,
-    push_hook: Option<Box<PushHook>>,
-    pull_request_hook: Option<Box<PullRequestHook>>,
-    issue_comment_hook: Option<Box<IssueCommentHook>>,
-    ping_hook: Option<Box<PingHook>>,
+fn handle_pull_request(state: &PullRequestState, data: &PullRequest) -> VolfResult<()> {
+    info!("got pr {:?}", data);
+    let prdata = &data.pull_request;
+    if data.action == "opened" || data.action == "reopened" {
+        let pr = Pull::new(&data.repository.full_name, &prdata.title, data.number);
+        let mut prs = state.lock().unwrap();
+        prs.push(pr);
+    }
+    Ok(())
 }
 
-impl Hub {
-    /// construct a new hub instance
-    pub fn new(state : Arc<PullRequestState>) -> Hub {
-        Hub {
-            state: state,
-            push_hook: None,
-            pull_request_hook: None,
-            issue_comment_hook: None,
-            ping_hook: None,
+fn handle_issue_comment(state: &PullRequestState, data: &IssueComment) -> VolfResult<()> {
+    info!("got issue comment {:?}", data);
+    if let Some(ref prdata) = data.issue.pull_request {
+        if data.action == "created" {
+            info!("Comment on {}#{} by {} - {}",
+                data.repository.full_name,
+                data.issue.number,
+                data.sender.login,
+                data.comment.body);
+        }
+        let mut prs = state.lock().unwrap();
+        if let Some(pr) = prs.iter().find(|&pr| pr.num == prdata.number) {
+            info!("found corresponding pr {}", pr.num);
+        }
+        else {
+            warn!("ignoring comment on untracked pr {}", prdata.number);
         }
     }
-    // register a hook handlers on an event
-    pub fn on_push<H>(&mut self, hook: H) where H: PushHook + 'static {
-        self.push_hook = Some(Box::new(hook));
-    }
-    pub fn on_pull_request<H>(&mut self, hook: H) where H: PullRequestHook + 'static {
-        self.pull_request_hook = Some(Box::new(hook));
-    }
-    pub fn on_issue_comment<H>(&mut self, hook: H) where H: IssueCommentHook + 'static {
-        self.issue_comment_hook = Some(Box::new(hook));
-    }
-    pub fn on_ping<H>(&mut self, hook: H) where H: PingHook + 'static {
-        self.ping_hook = Some(Box::new(hook));
-    }
+    Ok(())
+}
 
+fn handle_ping(_: &PullRequestState, data: &Ping) -> VolfResult<()> {
+    info!("Ping - {}", data.zen);
+    Ok(())
+}
 
-    /// deliver an event to the registered hook via Handler
-    fn deliver(&self, event: &str, payload: &str) {
-        // probably is a nicer way to do this, but can't think of one atm..
-        match event {
-            "pull_request" => {
-                if let Some(ref hook) = self.pull_request_hook {
-                    if let Ok(res) = json::decode::<PullRequest>(&payload) {
-                        debug!("github pull_request : {:?}", res);
-                        hook.handle(&self.state.clone(), &res);
-                    }
-                }
-            },
-            "push" => {
-                if let Some(ref hook) = self.push_hook {
-                    if let Ok(res) = json::decode::<Push>(&payload) {
-                        debug!("github push : {:?}", res);
-                        hook.handle(&self.state.clone(), &res);
-                    }
-                }
-            },
-            "issue_comment" => {
-                if let Some(ref hook) = self.issue_comment_hook {
-                    if let Ok(res) = json::decode::<IssueComment>(&payload) {
-                        debug!("github issue_comment : {:?}", res);
-                        hook.handle(&self.state.clone(), &res);
-                    }
-                }
-            },
-            "ping" => {
-                if let Some(ref hook) = self.ping_hook {
-                    if let Ok(res) = json::decode::<Ping>(&payload) {
-                        debug!("github ping : {:?}", res);
-                        hook.handle(&self.state.clone(), &res);
-                    }
-                }
-            },
-            _ => warn!("{} event unhandled - you are sending more than you need", event),
+// multiplex events
+fn handle_event(state: &PullRequestState, event: &str, payload: &str) -> VolfResult<()> {
+    match event {
+        "pull_request" => {
+            let res: PullRequest = try!(json::decode(&payload));
+            trace!("github pull_request : {:?}", res);
+            Ok(try!(handle_pull_request(state, &res)))
+        }
+        "push" => {
+            let res: Push = try!(json::decode(&payload));
+            trace!("github push : {:?}", res);
+            Ok(try!(handle_push(state, &res)))
+        }
+        "issue_comment" => {
+            let res: IssueComment = try!(json::decode(&payload));
+            trace!("github issue_comment : {:?}", res);
+            Ok(try!(handle_issue_comment(state, &res)))
+        }
+        "ping" => {
+            let res: Ping = try!(json::decode(&payload));
+            trace!("github ping event - '{}'", res.zen);
+            Ok(try!(handle_ping(state, &res)))
+        }
+        _ => {
+            warn!("{} event unhandled - you are sending more than you need", event);
+            Ok(())
         }
     }
 }
@@ -265,23 +223,24 @@ header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
 /// server handler equivalent to a hyper::Handler
 ///
 /// This is meant to be used by reroute and is thus not implementing Handler itself
-impl Hub {
-    pub fn handler(&self, mut req: Request, res: Response) {
-        let mut payload = String::new();
-        let headers = req.headers.clone();
-        if let (Some(&XGithubEvent(ref event)),
-                Some(&XGithubDelivery(ref id)),
-                Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
-                                                        headers.get::<XGithubDelivery>(),
-                                                        headers.get::<XHubSignature>()) {
-            if let Ok(_) = req.read_to_string(&mut payload) {
-                debug!("github event: {}", event);
-                // TODO: verify signature sha1 value == sha1(github.secret)
-                trace!("signature: {}", signature);
-                trace!("id {}", id);
-                self.deliver(event, &payload);
-            }
+
+pub fn webhook_handler(state: &PullRequestState, mut req: Request, res: Response) {
+    let mut payload = String::new();
+    let headers = req.headers.clone();
+    if let (Some(&XGithubEvent(ref event)),
+            Some(&XGithubDelivery(ref id)),
+            Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
+                                                    headers.get::<XGithubDelivery>(),
+                                                    headers.get::<XHubSignature>()) {
+        if let Ok(_) = req.read_to_string(&mut payload) {
+            debug!("github event: {}", event);
+            // TODO: verify signature sha1 value == sha1(github.secret)
+            trace!("signature: {}", signature);
+            trace!("id {}", id);
+            let _ = handle_event(state, event.as_str(), payload.as_str()).map_err(|err| {
+                warn!("Failed to handle {} : {}", event, err)
+            });
         }
-        res.send(b"ok").ok();
     }
+    res.send(b"ok").ok();
 }

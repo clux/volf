@@ -6,7 +6,7 @@ extern crate log;
 extern crate env_logger;
 
 use volf::Config;
-use volf::github::{Hub, Push, PullRequest, IssueComment};
+use volf::github::{Push, PullRequest, IssueComment};
 
 use hyper::Server;
 
@@ -40,8 +40,6 @@ fn test_ping_event() {
 
     let child = thread::spawn(|| {
         let cfg = Config::read().unwrap();
-        let mut hub = Hub::new();
-        // TODO: ping handler
         let addr = format!("0.0.0.0:{}", cfg.port);
         //let srv = Server::http(&addr.as_str()).unwrap().handle(hub);
     });
