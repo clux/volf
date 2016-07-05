@@ -11,12 +11,12 @@ use hyper::server::{Request, Response};
 use reroute::{Captures, Router};
 
 extern crate volf;
-use volf::{Config, Pull};
+use volf::{Config, Pull, PullRequestState};
 use volf::github::{Hub, Push, PullRequest, IssueComment, Ping};
 
 use clap::{Arg, App, AppSettings};
 use std::process;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 
 fn main() {
     let args = App::new("volf")
@@ -40,30 +40,49 @@ fn main() {
         })
         .unwrap();
 
-    // Synchronize before starting the server if requested
+    // God object
+    let main_state : PullRequestState = Arc::new(Mutex::new(vec![]));
+
+    // Synchronize state before starting the server if requested
     if args.is_present("synchronize") {
         unimplemented!();
     }
-    let state : Arc<Vec<Pull>> = Arc::new(vec![]);
 
-    // Start webhook server
-    let mut hub = Hub::new();
-    hub.on_push(|data: &Push| {
+    // Handle webhook events
+    let mut hub = Hub::new(main_state);
+    hub.on_push(|_: &Mutex<Vec<Pull>>, data: &Push| {
         info!("got push {:?}", data);
+        // TODO: need ref here to match up with a pr
     });
-    hub.on_pull_request(|data: &PullRequest| {
+    hub.on_pull_request(|state: &Mutex<Vec<Pull>>, data: &PullRequest| {
         info!("got pr {:?}", data);
+        let prdata = &data.pull_request;
+        if data.action == "opened" || data.action == "reopened" {
+            let pr = Pull::new(&data.repository.full_name, &prdata.title, data.number);
+            let mut prs = state.lock().unwrap();
+            prs.push(pr);
+        }
     });
-    hub.on_issue_comment(|data: &IssueComment| {
+    hub.on_issue_comment(|state: &Mutex<Vec<Pull>>, data: &IssueComment| {
         info!("got issue comment {:?}", data);
+        if let Some(ref prdata) = data.issue.pull_request {
+            let mut prs = state.lock().unwrap();
+            if let Some(pr) = prs.iter().find(|&pr| pr.num == prdata.number) {
+                info!("found corresponding pr {}", pr.num);
+            }
+            else {
+                warn!("ignoring comment on untracked pr {}", prdata.number);
+            }
+        }
     });
-    hub.on_ping(|data: &Ping| {
+    hub.on_ping(|_: &Mutex<Vec<Pull>>, data: &Ping| {
         info!("Ping - {}", data.zen);
     });
 
+    // Multiplex routes with reroute
     let mut router = Router::new();
     router.post(r"/github", move |req: Request, res: Response, _: Captures| {
-        hub.handler(req, res)
+        hub.handler(req, res) // defer to Hub instance entirely
     });
     router.finalize().unwrap();
 

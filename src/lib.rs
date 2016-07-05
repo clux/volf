@@ -12,7 +12,7 @@ extern crate hyper;
 // re-exports
 pub use config::Config;
 pub use errors::{VolfError, VolfResult};
-pub use pullrequest::Pull;
+pub use pullrequest::{Pull, PullRequestState};
 
 mod config;
 mod errors;

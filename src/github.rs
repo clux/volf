@@ -1,6 +1,8 @@
 use rustc_serialize::json;
 use hyper::server::{Request, Response};
 use std::io::Read;
+use std::sync::{Arc, Mutex};
+use super::{PullRequestState, Pull};
 
 // -----------------------------------------------------------------------------
 // Minor structs parts of various event types
@@ -134,35 +136,35 @@ pub struct Ping {
 // event handler traits
 
 pub trait PushHook: Send + Sync {
-    fn handle(&self, delivery: &Push);
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Push);
 }
 pub trait PullRequestHook: Send + Sync {
-    fn handle(&self, delivery: &PullRequest);
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &PullRequest);
 }
 pub trait IssueCommentHook: Send + Sync {
-    fn handle(&self, delivery: &IssueComment);
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &IssueComment);
 }
 pub trait PingHook: Send + Sync {
-    fn handle(&self, delivery: &Ping);
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Ping);
 }
-impl<F> PushHook for F where F: Fn(&Push), F: Sync + Send {
-    fn handle(&self, delivery: &Push) {
-        self(delivery)
+impl<F> PushHook for F where F: Fn(&Mutex<Vec<Pull>>, &Push), F: Sync + Send {
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Push) {
+        self(state, data)
     }
 }
-impl<F> PullRequestHook for F where F: Fn(&PullRequest), F: Sync + Send {
-    fn handle(&self, delivery: &PullRequest) {
-        self(delivery)
+impl<F> PullRequestHook for F where F: Fn(&Mutex<Vec<Pull>>, &PullRequest), F: Sync + Send {
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &PullRequest) {
+        self(state, data)
     }
 }
-impl<F> IssueCommentHook for F where F: Fn(&IssueComment), F: Sync + Send {
-    fn handle(&self, delivery: &IssueComment) {
-        self(delivery)
+impl<F> IssueCommentHook for F where F: Fn(&Mutex<Vec<Pull>>, &IssueComment), F: Sync + Send {
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &IssueComment) {
+        self(state, data)
     }
 }
-impl<F> PingHook for F where F: Fn(&Ping), F: Sync + Send {
-    fn handle(&self, delivery: &Ping) {
-        self(delivery)
+impl<F> PingHook for F where F: Fn(&Mutex<Vec<Pull>>, &Ping), F: Sync + Send {
+    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Ping) {
+        self(state, data)
     }
 }
 
@@ -170,8 +172,9 @@ impl<F> PingHook for F where F: Fn(&Ping), F: Sync + Send {
 // main event handler
 
 /// A hub is a registry of hooks
-#[derive(Default)]
+//#[derive(Default)]
 pub struct Hub {
+    state: PullRequestState,
     push_hook: Option<Box<PushHook>>,
     pull_request_hook: Option<Box<PullRequestHook>>,
     issue_comment_hook: Option<Box<IssueCommentHook>>,
@@ -180,8 +183,14 @@ pub struct Hub {
 
 impl Hub {
     /// construct a new hub instance
-    pub fn new() -> Hub {
-        Hub { ..Default::default() }
+    pub fn new(state : PullRequestState) -> Hub {
+        Hub {
+            state: state,
+            push_hook: None,
+            pull_request_hook: None,
+            issue_comment_hook: None,
+            ping_hook: None,
+        }
     }
     // register a hook handlers on an event
     pub fn on_push<H>(&mut self, hook: H) where H: PushHook + 'static {
@@ -206,7 +215,7 @@ impl Hub {
                 if let Some(ref hook) = self.pull_request_hook {
                     if let Ok(res) = json::decode::<PullRequest>(&payload) {
                         debug!("github pull_request : {:?}", res);
-                        hook.handle(&res);
+                        hook.handle(&self.state.clone(), &res);
                     }
                 }
             },
@@ -214,7 +223,7 @@ impl Hub {
                 if let Some(ref hook) = self.push_hook {
                     if let Ok(res) = json::decode::<Push>(&payload) {
                         debug!("github push : {:?}", res);
-                        hook.handle(&res);
+                        hook.handle(&self.state.clone(), &res);
                     }
                 }
             },
@@ -222,7 +231,7 @@ impl Hub {
                 if let Some(ref hook) = self.issue_comment_hook {
                     if let Ok(res) = json::decode::<IssueComment>(&payload) {
                         debug!("github issue_comment : {:?}", res);
-                        hook.handle(&res);
+                        hook.handle(&self.state.clone(), &res);
                     }
                 }
             },
@@ -230,7 +239,7 @@ impl Hub {
                 if let Some(ref hook) = self.ping_hook {
                     if let Ok(res) = json::decode::<Ping>(&payload) {
                         debug!("github ping : {:?}", res);
-                        hook.handle(&res);
+                        hook.handle(&self.state.clone(), &res);
                     }
                 }
             },

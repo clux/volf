@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex, RwLock};
 
 pub enum Progress {
     /// PR failed tests (to distinguish from Ready/Pending state)
@@ -21,14 +22,18 @@ pub enum Progress {
     Testing,
 }
 
+impl Default for Progress {
+    fn default() -> Progress { Progress::Ready }
+}
 
+#[derive(Default)]
 pub struct Pull {
     /// The full owner/repo string
     repo: String,
     /// Title of PR
     title: String,
     /// The pull request number
-    num: u64,
+    pub num: u64,
     /// The current state of the PR
     state: Progress,
     // TODO: need base and head sha for bookkeeping
@@ -40,6 +45,9 @@ pub struct Pull {
     /// Whether this PR is mergeable
     mergeable: bool,
 }
+
+/// Convenience alias for main application state
+pub type PullRequestState = Arc<Mutex<Vec<Pull>>>;
 
 impl Pull {
     pub fn new(full_name: &str, title: &str, num: u64) -> Pull {
