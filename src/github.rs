@@ -1,7 +1,7 @@
 use rustc_serialize::json;
 use hyper::server::{Request, Response};
 use std::io::Read;
-use super::{PullRequestState, Pull, VolfResult};
+use super::{PullRequestState, Pull, VolfResult, VolfError};
 
 // -----------------------------------------------------------------------------
 // Minor structs parts of various event types
@@ -38,7 +38,7 @@ pub struct Issue {
     /// Body of the original issue
     pub body: String,
     /// Struct that is set if the Issue is a PR
-    pub pull_request: Option<PullRequestIssue>
+    pub pull_request: Option<PullRequestIssue>,
 }
 
 #[derive(RustcDecodable, Debug)]
@@ -134,12 +134,12 @@ pub struct Ping {
 // -----------------------------------------------------------------------------
 // event handlers
 
-fn handle_push(_: &PullRequestState, _: &Push) -> VolfResult<()> {
+fn handle_push(_: Push, _: &PullRequestState) -> VolfResult<()> {
     // TODO: need `ref` key here to match up with a pr
     Ok(())
 }
 
-fn handle_pull_request(state: &PullRequestState, data: &PullRequest) -> VolfResult<()> {
+fn handle_pull_request(data: PullRequest, state: &PullRequestState) -> VolfResult<()> {
     info!("got pr {:?}", data);
     let prdata = &data.pull_request;
     if data.action == "opened" || data.action == "reopened" {
@@ -150,28 +150,27 @@ fn handle_pull_request(state: &PullRequestState, data: &PullRequest) -> VolfResu
     Ok(())
 }
 
-fn handle_issue_comment(state: &PullRequestState, data: &IssueComment) -> VolfResult<()> {
+fn handle_issue_comment(data: IssueComment, state: &PullRequestState) -> VolfResult<()> {
     info!("got issue comment {:?}", data);
     if let Some(ref prdata) = data.issue.pull_request {
         if data.action == "created" {
             info!("Comment on {}#{} by {} - {}",
-                data.repository.full_name,
-                data.issue.number,
-                data.sender.login,
-                data.comment.body);
+                  data.repository.full_name,
+                  data.issue.number,
+                  data.sender.login,
+                  data.comment.body);
         }
         let mut prs = state.lock().unwrap();
         if let Some(pr) = prs.iter().find(|&pr| pr.num == prdata.number) {
             info!("found corresponding pr {}", pr.num);
-        }
-        else {
+        } else {
             warn!("ignoring comment on untracked pr {}", prdata.number);
         }
     }
     Ok(())
 }
 
-fn handle_ping(_: &PullRequestState, data: &Ping) -> VolfResult<()> {
+fn handle_ping(data: Ping, _: &PullRequestState) -> VolfResult<()> {
     info!("Ping - {}", data.zen);
     Ok(())
 }
@@ -179,30 +178,11 @@ fn handle_ping(_: &PullRequestState, data: &Ping) -> VolfResult<()> {
 // multiplex events
 fn handle_event(state: &PullRequestState, event: &str, payload: &str) -> VolfResult<()> {
     match event {
-        "pull_request" => {
-            let res: PullRequest = try!(json::decode(&payload));
-            trace!("github pull_request : {:?}", res);
-            Ok(try!(handle_pull_request(state, &res)))
-        }
-        "push" => {
-            let res: Push = try!(json::decode(&payload));
-            trace!("github push : {:?}", res);
-            Ok(try!(handle_push(state, &res)))
-        }
-        "issue_comment" => {
-            let res: IssueComment = try!(json::decode(&payload));
-            trace!("github issue_comment : {:?}", res);
-            Ok(try!(handle_issue_comment(state, &res)))
-        }
-        "ping" => {
-            let res: Ping = try!(json::decode(&payload));
-            trace!("github ping event - '{}'", res.zen);
-            Ok(try!(handle_ping(state, &res)))
-        }
-        _ => {
-            warn!("{} event unhandled - you are sending more than you need", event);
-            Ok(())
-        }
+        "issue_comment" => handle_issue_comment(try!(json::decode(&payload)), state),
+        "pull_request" => handle_pull_request(try!(json::decode(&payload)), state),
+        "push" => handle_push(try!(json::decode(&payload)), state),
+        "ping" => handle_ping(try!(json::decode(&payload)), state),
+        _ => Err(VolfError::SpammyGithub(event.into())),
     }
 }
 
@@ -237,9 +217,8 @@ pub fn webhook_handler(state: &PullRequestState, mut req: Request, res: Response
             // TODO: verify signature sha1 value == sha1(github.secret)
             trace!("signature: {}", signature);
             trace!("id {}", id);
-            let _ = handle_event(state, event.as_str(), payload.as_str()).map_err(|err| {
-                warn!("Failed to handle {} : {}", event, err)
-            });
+            let _ = handle_event(state, event.as_str(), payload.as_str())
+                .map_err(|err| warn!("Failed to handle {} : {}", event, err));
         }
     }
     res.send(b"ok").ok();

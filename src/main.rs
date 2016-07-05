@@ -41,7 +41,7 @@ fn main() {
         .unwrap();
 
     // God object
-    let state : Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
+    let state: Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
 
     // Synchronize state before starting the server if requested
     if args.is_present("synchronize") {
@@ -50,9 +50,10 @@ fn main() {
 
     // Multiplex routes with reroute
     let mut router = Router::new();
-    router.post(r"/github", move |req: Request, res: Response, _: Captures| {
-        webhook_handler(&state.clone(), req, res)
-    });
+    router.post(r"/github",
+                move |req: Request, res: Response, _: Captures| {
+                    webhook_handler(&state.clone(), req, res)
+                });
     router.finalize().unwrap();
 
     let addr = format!("0.0.0.0:{}", config.port);

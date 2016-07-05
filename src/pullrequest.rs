@@ -70,15 +70,13 @@ impl Pull {
             true
         }
     }
-    pub fn unblock(&mut self) {
-        self.blocked = false;
-    }
+    pub fn unblock(&mut self) { self.blocked = false; }
     pub fn block(&mut self) {
         match self.state {
             Progress::Testing => {
                 // too late - need to cancel builds to stop it
-            },
-            _ => self.blocked = true
+            }
+            _ => self.blocked = true,
 
         }
     }
