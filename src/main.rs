@@ -16,7 +16,7 @@ use volf::github::{Hub, Push, PullRequest, IssueComment, Ping};
 
 use clap::{Arg, App, AppSettings};
 use std::process;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 fn main() {
     let args = App::new("volf")
@@ -41,7 +41,7 @@ fn main() {
         .unwrap();
 
     // God object
-    let main_state : PullRequestState = Arc::new(Mutex::new(vec![]));
+    let main_state : Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
 
     // Synchronize state before starting the server if requested
     if args.is_present("synchronize") {
@@ -50,11 +50,11 @@ fn main() {
 
     // Handle webhook events
     let mut hub = Hub::new(main_state);
-    hub.on_push(|_: &Mutex<Vec<Pull>>, data: &Push| {
+    hub.on_push(|_: &PullRequestState, data: &Push| {
         info!("got push {:?}", data);
         // TODO: need ref here to match up with a pr
     });
-    hub.on_pull_request(|state: &Mutex<Vec<Pull>>, data: &PullRequest| {
+    hub.on_pull_request(|state: &PullRequestState, data: &PullRequest| {
         info!("got pr {:?}", data);
         let prdata = &data.pull_request;
         if data.action == "opened" || data.action == "reopened" {
@@ -63,7 +63,7 @@ fn main() {
             prs.push(pr);
         }
     });
-    hub.on_issue_comment(|state: &Mutex<Vec<Pull>>, data: &IssueComment| {
+    hub.on_issue_comment(|state: &PullRequestState, data: &IssueComment| {
         info!("got issue comment {:?}", data);
         if let Some(ref prdata) = data.issue.pull_request {
             let mut prs = state.lock().unwrap();
@@ -75,7 +75,7 @@ fn main() {
             }
         }
     });
-    hub.on_ping(|_: &Mutex<Vec<Pull>>, data: &Ping| {
+    hub.on_ping(|_: &PullRequestState, data: &Ping| {
         info!("Ping - {}", data.zen);
     });
 

@@ -136,34 +136,34 @@ pub struct Ping {
 // event handler traits
 
 pub trait PushHook: Send + Sync {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Push);
+    fn handle(&self, state: &PullRequestState, data: &Push);
 }
 pub trait PullRequestHook: Send + Sync {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &PullRequest);
+    fn handle(&self, state: &PullRequestState, data: &PullRequest);
 }
 pub trait IssueCommentHook: Send + Sync {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &IssueComment);
+    fn handle(&self, state: &PullRequestState, data: &IssueComment);
 }
 pub trait PingHook: Send + Sync {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Ping);
+    fn handle(&self, state: &PullRequestState, data: &Ping);
 }
-impl<F> PushHook for F where F: Fn(&Mutex<Vec<Pull>>, &Push), F: Sync + Send {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Push) {
+impl<F> PushHook for F where F: Fn(&PullRequestState, &Push), F: Sync + Send {
+    fn handle(&self, state: &PullRequestState, data: &Push) {
         self(state, data)
     }
 }
-impl<F> PullRequestHook for F where F: Fn(&Mutex<Vec<Pull>>, &PullRequest), F: Sync + Send {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &PullRequest) {
+impl<F> PullRequestHook for F where F: Fn(&PullRequestState, &PullRequest), F: Sync + Send {
+    fn handle(&self, state: &PullRequestState, data: &PullRequest) {
         self(state, data)
     }
 }
-impl<F> IssueCommentHook for F where F: Fn(&Mutex<Vec<Pull>>, &IssueComment), F: Sync + Send {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &IssueComment) {
+impl<F> IssueCommentHook for F where F: Fn(&PullRequestState, &IssueComment), F: Sync + Send {
+    fn handle(&self, state: &PullRequestState, data: &IssueComment) {
         self(state, data)
     }
 }
-impl<F> PingHook for F where F: Fn(&Mutex<Vec<Pull>>, &Ping), F: Sync + Send {
-    fn handle(&self, state: &Mutex<Vec<Pull>>, data: &Ping) {
+impl<F> PingHook for F where F: Fn(&PullRequestState, &Ping), F: Sync + Send {
+    fn handle(&self, state: &PullRequestState, data: &Ping) {
         self(state, data)
     }
 }
@@ -172,9 +172,9 @@ impl<F> PingHook for F where F: Fn(&Mutex<Vec<Pull>>, &Ping), F: Sync + Send {
 // main event handler
 
 /// A hub is a registry of hooks
-//#[derive(Default)]
+//#[derive(Default)] (CAN DO THIS on 1.10)
 pub struct Hub {
-    state: PullRequestState,
+    state: Arc<PullRequestState>,
     push_hook: Option<Box<PushHook>>,
     pull_request_hook: Option<Box<PullRequestHook>>,
     issue_comment_hook: Option<Box<IssueCommentHook>>,
@@ -183,7 +183,7 @@ pub struct Hub {
 
 impl Hub {
     /// construct a new hub instance
-    pub fn new(state : PullRequestState) -> Hub {
+    pub fn new(state : Arc<PullRequestState>) -> Hub {
         Hub {
             state: state,
             push_hook: None,

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Mutex;
 
 pub enum Progress {
     /// PR failed tests (to distinguish from Ready/Pending state)
@@ -47,7 +47,7 @@ pub struct Pull {
 }
 
 /// Convenience alias for main application state
-pub type PullRequestState = Arc<Mutex<Vec<Pull>>>;
+pub type PullRequestState = Mutex<Vec<Pull>>;
 
 impl Pull {
     pub fn new(full_name: &str, title: &str, num: u64) -> Pull {
