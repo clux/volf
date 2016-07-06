@@ -19,6 +19,7 @@ log = "*"
 env_logger = "*"
 hyper = "*"
 reroute = "*"
+url = "*"
 
 [[test]]
 harness = false

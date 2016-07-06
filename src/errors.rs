@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io;
 use rustc_serialize::json;
+use hyper::Error as HttpError;
 
 /// The one and only error type for the volf library
 #[derive(Debug)]
@@ -9,6 +10,8 @@ pub enum VolfError {
     Io(io::Error),
     /// Errors propagated from rustc_serialize
     Parse(json::DecoderError),
+    /// Errors propagated from hyper
+    Http(HttpError),
 
     /// Config (volf.json) not found in current working directory
     MissingConfig,
@@ -22,19 +25,23 @@ impl fmt::Display for VolfError {
         match *self {
             VolfError::Io(ref err) => err.fmt(f),
             VolfError::Parse(ref err) => err.fmt(f),
+            VolfError::Http(ref err) => err.fmt(f),
             VolfError::MissingConfig => write!(f, "Local config volf.json not found"),
             VolfError::SpammyGithub(ref s) => write!(f, "{} events should not be sent to volf", s),
         }
     }
 }
 
-// Allow io and json errors to be converted to VolfError in a try! without map_err
 impl From<io::Error> for VolfError {
     fn from(err: io::Error) -> VolfError { VolfError::Io(err) }
 }
 
 impl From<json::DecoderError> for VolfError {
     fn from(err: json::DecoderError) -> VolfError { VolfError::Parse(err) }
+}
+
+impl From<HttpError> for VolfError {
+    fn from(error: HttpError) -> VolfError { VolfError::Http(error) }
 }
 
 /// Type alias to stop having to type out VolfError everywhere.
