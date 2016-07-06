@@ -42,8 +42,8 @@ pub struct Pull {
     approver: Option<String>,
     /// Whether this is allowed to progress to testing
     blocked: bool,
-    /// Whether this PR is mergeable
-    mergeable: bool,
+    /// Whether this PR is unmergeable
+    unmergeable: bool,
 }
 
 /// Convenience alias for main application state
@@ -52,20 +52,17 @@ pub type PullRequestState = Mutex<Vec<Pull>>;
 impl Pull {
     pub fn new(full_name: &str, title: &str, num: u64) -> Pull {
         Pull {
-            repo: full_name.to_string(),
-            title: title.to_string(),
+            repo: full_name.into(),
+            title: title.into(),
             num: num,
-            state: Progress::Ready,
-            approver: None,
-            blocked: false,
-            mergeable: true,
+            ..Default::default()
         }
     }
     pub fn approve(&mut self, approver: &str) -> bool {
         if self.blocked {
             false
         } else {
-            self.approver = Some(approver.to_string());
+            self.approver = Some(approver.into());
             self.state = Progress::Pending;
             true
         }

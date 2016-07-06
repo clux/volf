@@ -40,7 +40,7 @@ fn main() {
         })
         .unwrap();
 
-    // God object
+    // Application state is just a shared vector of PRs
     let state: Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
 
     // Synchronize state before starting the server if requested

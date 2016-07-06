@@ -217,7 +217,7 @@ pub fn webhook_handler(state: &PullRequestState, mut req: Request, res: Response
             // TODO: verify signature sha1 value == sha1(github.secret)
             trace!("signature: {}", signature);
             trace!("id {}", id);
-            let _ = handle_event(state, event.as_str(), payload.as_str())
+            let _ = handle_event(state, &event, &payload)
                 .map_err(|err| warn!("Failed to handle {} : {}", event, err));
         }
     }
