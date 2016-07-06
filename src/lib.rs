@@ -14,9 +14,11 @@ extern crate hyper;
 pub use config::Config;
 pub use errors::{VolfError, VolfResult};
 pub use pullrequest::{Pull, PullRequestState};
+pub use github::webhook_handler;
+pub use client::{Github, Credentials};
 
 mod client;
 mod config;
 mod errors;
-pub mod github;
+mod github;
 mod pullrequest;

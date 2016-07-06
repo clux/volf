@@ -6,17 +6,18 @@ extern crate env_logger;
 extern crate hyper;
 extern crate reroute;
 
-use hyper::Server;
+use hyper::{Server, Client};
 use hyper::server::{Request, Response};
 use reroute::{Captures, Router};
 
 extern crate volf;
-use volf::{Config, PullRequestState};
-use volf::github::webhook_handler;
+use volf::{Config, PullRequestState, Github, Credentials};
+use volf::webhook_handler;
 
 use clap::{Arg, App, AppSettings};
 use std::process;
 use std::sync::{Arc, Mutex};
+use std::env;
 
 fn main() {
     let args = App::new("volf")
@@ -39,6 +40,16 @@ fn main() {
             process::exit(1);
         })
         .unwrap();
+
+    // Create a github client from our credentials
+    let token = env::var("GITHUB_TOKEN").map_err(|_| {
+        error!("Missing GITHUB_TOKEN environment variable");
+        process::exit(1)
+    }).unwrap();
+    let client = Client::new();
+    let github = Github::new(format!("volf/{}", crate_version!()),
+                             &client,
+                             Credentials::Token(token));
 
     // Application state is just a shared vector of PRs
     let state: Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
