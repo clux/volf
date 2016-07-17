@@ -15,9 +15,9 @@ pub use config::Config;
 pub use errors::{VolfError, VolfResult};
 pub use pullrequest::{Pull, PullRequestState};
 pub use github::webhook_handler;
-pub use client::{Github, Credentials};
+pub use api::client::{Github, Credentials};
 
-mod client;
+mod api;
 mod config;
 mod errors;
 mod github;

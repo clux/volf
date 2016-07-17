@@ -6,7 +6,8 @@ use hyper::status::StatusCode;
 use std::fmt;
 use std::io::Read;
 use url::Url;
-use super::{VolfResult, VolfError};
+// TODO: intermediate error type?
+use {VolfResult, VolfError};
 
 const DEFAULT_HOST: &'static str = "https://api.github.com";
 
