@@ -43,14 +43,18 @@ fn main() {
         .unwrap();
 
     // Create a github client from our credentials
-    let token = env::var("GITHUB_TOKEN").map_err(|_| {
-        error!("Missing GITHUB_TOKEN environment variable");
-        process::exit(1)
-    }).unwrap();
+    let token = env::var("GITHUB_TOKEN")
+        .map_err(|_| {
+            error!("Missing GITHUB_TOKEN environment variable");
+            process::exit(1)
+        })
+        .unwrap();
     let client = Client::new();
     let github = Github::new(format!("volf/{}", crate_version!()),
                              &client,
                              Credentials::Token(token));
+
+    let _ = github.comment("clux/volf", 1, "hello from api");
 
     // Application state is just a shared vector of PRs
     let state: Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));

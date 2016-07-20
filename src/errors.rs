@@ -38,7 +38,9 @@ impl fmt::Display for VolfError {
             VolfError::Http(ref err) => err.fmt(f),
             VolfError::MissingConfig => write!(f, "Local config volf.json not found"),
             VolfError::SpammyGithub(ref s) => write!(f, "{} events should not be sent to volf", s),
-            VolfError::Client { ref error, .. } => write!(f, "{}", json::stringify(error.clone())),
+            VolfError::Client { ref error, ref code } => {
+                write!(f, "{} - {}", code, json::stringify(error.clone()))
+            }
         }
     }
 }

@@ -58,7 +58,8 @@ impl<'a> Github<'a> {
 
 
     fn authenticate(&self, method: Method, uri: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.host, uri);
+        let url = format!("{}/{}", self.host, uri);
+        info!("req to uri {}", url);
         match self.credentials {
             Credentials::Token(ref token) => {
                 self.client.request(method, &url).header(Authorization(format!("token {}", token)))
@@ -67,16 +68,16 @@ impl<'a> Github<'a> {
 
                 let mut parsed = Url::parse(&url).unwrap();
                 parsed.query_pairs_mut()
-                      .append_pair("client_id", id)
-                      .append_pair("client_secret", secret);
+                    .append_pair("client_id", id)
+                    .append_pair("client_secret", secret);
                 self.client.request(method, parsed)
             }
             Credentials::None => self.client.request(method, &url),
         }
     }
+    // TODO: accept v3 header
 
-    fn request(&self, method: Method, uri: &str, body: Option<&'a [u8]>) -> VolfResult<JsonValue>
-    {
+    fn request(&self, method: Method, uri: &str, body: Option<&'a str>) -> VolfResult<JsonValue> {
         let builder = self.authenticate(method, uri).header(UserAgent(self.agent.to_owned()));
         let mut res = try!(match body {
             Some(ref bod) => builder.body(*bod).send(),
@@ -107,23 +108,26 @@ impl<'a> Github<'a> {
         }
     }
 
-    fn get(&self, uri: &str) -> VolfResult<JsonValue>
-    {
-        self.request(Method::Get, uri, None)
-    }
+    fn get(&self, uri: &str) -> VolfResult<JsonValue> { self.request(Method::Get, uri, None) }
 
-    fn post(&self, uri: &str, message: &[u8]) -> VolfResult<JsonValue>
-    {
+    fn post(&self, uri: &str, message: &str) -> VolfResult<JsonValue> {
         self.request(Method::Post, uri, Some(message))
     }
 
-    fn patch(&self, uri: &str, message: &[u8]) -> VolfResult<JsonValue>
-    {
+    fn patch(&self, uri: &str, message: &str) -> VolfResult<JsonValue> {
         self.request(Method::Patch, uri, Some(message))
     }
 
-    fn put(&self, uri: &str, message: &[u8]) -> VolfResult<JsonValue>
-    {
+    fn put(&self, uri: &str, message: &str) -> VolfResult<JsonValue> {
         self.request(Method::Put, uri, Some(message))
+    }
+
+    /// Make a comment on an issue
+    pub fn comment(&self, repo: &str, issue: u64, message: &str) -> VolfResult<JsonValue> {
+        let uri = format!("repos/{}/issues/{}/comments", repo, issue);
+        let data = object!{
+            "body" => message
+        };
+        self.post(&uri, &json::stringify(data))
     }
 }
