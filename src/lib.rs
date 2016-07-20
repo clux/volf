@@ -4,6 +4,8 @@
 extern crate rustc_serialize;
 extern crate url;
 
+extern crate json;
+
 #[macro_use]
 extern crate log;
 
@@ -15,9 +17,9 @@ pub use config::Config;
 pub use errors::{VolfError, VolfResult};
 pub use pullrequest::{Pull, PullRequestState};
 pub use github::webhook_handler;
-pub use api::client::{Github, Credentials};
 
-mod api;
+pub mod client;
+
 mod config;
 mod errors;
 mod github;

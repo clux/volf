@@ -11,7 +11,8 @@ use hyper::server::{Request, Response};
 use reroute::{Captures, Router};
 
 extern crate volf;
-use volf::{Config, PullRequestState, Github, Credentials};
+use volf::{Config, PullRequestState};
+use volf::client::{Github, Credentials};
 use volf::webhook_handler;
 
 use clap::{Arg, App, AppSettings};

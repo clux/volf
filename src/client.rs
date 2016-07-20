@@ -6,6 +6,7 @@ use hyper::status::StatusCode;
 use std::fmt;
 use std::io::Read;
 use url::Url;
+use json::{self, JsonValue};
 // TODO: intermediate error type?
 use {VolfResult, VolfError};
 
@@ -74,7 +75,7 @@ impl<'a> Github<'a> {
         }
     }
 
-    fn request<D>(&self, method: Method, uri: &str, body: Option<&'a [u8]>) -> VolfResult<D>
+    fn request(&self, method: Method, uri: &str, body: Option<&'a [u8]>) -> VolfResult<JsonValue>
     {
         let builder = self.authenticate(method, uri).header(UserAgent(self.agent.to_owned()));
         let mut res = try!(match body {
@@ -90,39 +91,38 @@ impl<'a> Github<'a> {
                res.status,
                res.headers,
                body);
-        //match res.status {
-        //    StatusCode::Conflict |
-        //    StatusCode::BadRequest |
-        //    StatusCode::UnprocessableEntity |
-        //    StatusCode::Unauthorized |
-        //    StatusCode::NotFound |
-        //    StatusCode::Forbidden => {
-        //        Err(Error::Fault {
-        //            code: res.status,
-        //            error: try!(serde_json::from_str::<ClientError>(&body)),
-        //        })
-        //    }
-        //    _ => Ok(try!(serde_json::from_str::<D>(&body))),
-        //}
-        unimplemented!()
+        match res.status {
+            StatusCode::Conflict |
+            StatusCode::BadRequest |
+            StatusCode::UnprocessableEntity |
+            StatusCode::Unauthorized |
+            StatusCode::NotFound |
+            StatusCode::Forbidden => {
+                Err(VolfError::Client {
+                    code: res.status,
+                    error: try!(json::parse(&body)),
+                })
+            }
+            _ => Ok(try!(json::parse(&body))),
+        }
     }
 
-    fn get<D>(&self, uri: &str) -> VolfResult<D>
+    fn get(&self, uri: &str) -> VolfResult<JsonValue>
     {
         self.request(Method::Get, uri, None)
     }
 
-    fn post<D>(&self, uri: &str, message: &[u8]) -> VolfResult<D>
+    fn post(&self, uri: &str, message: &[u8]) -> VolfResult<JsonValue>
     {
         self.request(Method::Post, uri, Some(message))
     }
 
-    fn patch<D>(&self, uri: &str, message: &[u8]) -> VolfResult<D>
+    fn patch(&self, uri: &str, message: &[u8]) -> VolfResult<JsonValue>
     {
         self.request(Method::Patch, uri, Some(message))
     }
 
-    fn put<D>(&self, uri: &str, message: &[u8]) -> VolfResult<D>
+    fn put(&self, uri: &str, message: &[u8]) -> VolfResult<JsonValue>
     {
         self.request(Method::Put, uri, Some(message))
     }

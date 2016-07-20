@@ -1,25 +1,26 @@
 [package]
+authors = ["Eirik Albrigtsen <analsandblaster@gmail.com>"]
 name = "volf"
 version = "0.0.0"
-authors = ["Eirik Albrigtsen <analsandblaster@gmail.com>"]
+
+[[bin]]
+doc = false
+name = "volf"
+path = "src/main.rs"
+
+[dependencies]
+clap = "*"
+env_logger = "*"
+hyper = "*"
+json = "0.9.1"
+log = "*"
+reroute = "*"
+rustc-serialize = "*"
+url = "*"
 
 [lib]
 name = "volf"
 path = "src/lib.rs"
-
-[[bin]]
-name = "volf"
-path = "src/main.rs"
-doc = false
-
-[dependencies]
-clap = "*"
-rustc-serialize = "*"
-log = "*"
-env_logger = "*"
-hyper = "*"
-reroute = "*"
-url = "*"
 
 [[test]]
 harness = false
