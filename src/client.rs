@@ -3,7 +3,6 @@ use hyper::client::RequestBuilder;
 use hyper::method::Method;
 use hyper::header::{Authorization, ContentLength, UserAgent};
 use hyper::status::StatusCode;
-use std::fmt;
 use std::io::Read;
 use url::Url;
 use json::{self, JsonValue};
@@ -104,7 +103,14 @@ impl<'a> Github<'a> {
                     error: try!(json::parse(&body)),
                 })
             }
-            _ => Ok(try!(json::parse(&body))),
+            _ => {
+                if body.len() > 0 {
+                    Ok(try!(json::parse(&body)))
+                } else {
+                    // allow empty bodies (from test ping)
+                    Ok(json::Null)
+                }
+            },
         }
     }
 
@@ -129,5 +135,11 @@ impl<'a> Github<'a> {
             "body" => message
         };
         self.post(&uri, &json::stringify(data))
+    }
+
+    /// Test the ping hook
+    pub fn ping(&self, repo: &str, hook: u64) -> VolfResult<()> {
+        try!(self.post(&format!("repos/{}/hooks/{}/pings", repo, hook), ""));
+        Ok(())
     }
 }

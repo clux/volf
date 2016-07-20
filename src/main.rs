@@ -54,8 +54,6 @@ fn main() {
                              &client,
                              Credentials::Token(token));
 
-    let _ = github.comment("clux/volf", 1, "hello from api");
-
     // Application state is just a shared vector of PRs
     let state: Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
 
