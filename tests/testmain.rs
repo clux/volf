@@ -45,18 +45,20 @@ fn test_ping_event(token: String, hookid: u64) {
     use std::thread;
     use std::time::Duration;
 
+    let cfg = Config::read().unwrap();
     let state: PullRequestState = Arc::new(Mutex::new(vec![]));
+    let client = Client::new();
+    let github = Arc::new(Github::new("volf-test",
+        client,
+        Credentials::Token(token)));
+
+    let addr = format!("0.0.0.0:{}", cfg.port);
+    let srv = ServerHandle::new(state.clone(), github.clone());
 
     thread::spawn(move || {
-        let cfg = Config::read().unwrap();
-        let addr = format!("0.0.0.0:{}", cfg.port);
-        let srv = ServerHandle::new(state.clone());
         Server::http(&addr.as_str()).unwrap().handle(srv).unwrap();
     });
-    let client = Client::new();
-    let github = Github::new("volf-test",
-                             &client,
-                             Credentials::Token(token));
+
     let r = github.ping("clux/volf", hookid);
     assert!(r.is_ok(), "could ping our hook");
     // wait for github to forward event to this

@@ -136,12 +136,6 @@ pub struct Ping {
 // event handlers
 
 impl ServerHandle {
-    pub fn new(prs: PullRequestState) -> ServerHandle {
-        ServerHandle {
-            prs: prs,
-        }
-    }
-
     fn handle_push(&self, _: Push) -> VolfResult<()> {
         // TODO: need `ref` key here to match up with a pr
         Ok(())

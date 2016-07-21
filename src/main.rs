@@ -47,9 +47,10 @@ fn main() {
         })
         .unwrap();
     let client = Client::new();
-    let github = Github::new(format!("volf/{}", crate_version!()),
-                             &client,
-                             Credentials::Token(token));
+    let github = Arc::new(Github::new(
+        format!("volf/{}", crate_version!()),
+        client,
+        Credentials::Token(token)));
 
     // Application state is just a shared vector of PRs
     let state: PullRequestState = Arc::new(Mutex::new(vec![]));
@@ -60,7 +61,7 @@ fn main() {
     }
 
     // Set up webhook server
-    let srv = ServerHandle::new(state.clone());
+    let srv = ServerHandle::new(state.clone(), github);
     let addr = format!("0.0.0.0:{}", config.port);
     info!("Listening on {}", addr);
     Server::http(&addr.as_str()).unwrap().handle(srv).unwrap();

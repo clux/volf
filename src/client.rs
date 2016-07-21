@@ -26,16 +26,17 @@ pub enum Credentials {
 }
 
 /// Entry point interface for interacting with Github API
-pub struct Github<'a> {
+#[derive(Debug)]
+pub struct Github {
     host: String,
     agent: String,
-    client: &'a Client,
+    client: Client,
     credentials: Credentials,
 }
 
-impl<'a> Github<'a> {
+impl Github {
     /// Create a new Github instance
-    pub fn new<A>(agent: A, client: &'a Client, credentials: Credentials) -> Github<'a>
+    pub fn new<A>(agent: A, client: Client, credentials: Credentials) -> Github
         where A: Into<String>
     {
         Github::host(DEFAULT_HOST, agent, client, credentials)
@@ -43,7 +44,7 @@ impl<'a> Github<'a> {
 
     /// Create a new Github instance hosted at a custom location.
     /// Useful for github enterprise installations ( yourdomain.com/api/v3/ )
-    pub fn host<H, A>(host: H, agent: A, client: &'a Client, credentials: Credentials) -> Github<'a>
+    pub fn host<H, A>(host: H, agent: A, client: Client, credentials: Credentials) -> Github
         where H: Into<String>,
               A: Into<String>
     {
@@ -76,7 +77,7 @@ impl<'a> Github<'a> {
     }
     // TODO: accept v3 header
 
-    fn request(&self, method: Method, uri: &str, body: Option<&'a str>) -> VolfResult<JsonValue> {
+    fn request(&self, method: Method, uri: &str, body: Option<&str>) -> VolfResult<JsonValue> {
         let builder = self.authenticate(method, uri).header(UserAgent(self.agent.to_owned()));
         let mut res = try!(match body {
             Some(ref bod) => builder.body(*bod).send(),
