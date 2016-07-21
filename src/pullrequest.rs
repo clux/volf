@@ -82,10 +82,23 @@ impl Pull {
 // TODO: how to handle build results?
 
 
+pub fn parse_commands(pr: &mut Pull, comment: String) {
+    let cmds = comment.split_whitespace().into_iter().filter(|&w| {
+        w == "r+" || w == "retry" // keep it simple for now
+    }).collect::<Vec<_>>();
 
-pub fn parse_commands() {
-    // if retry and state is failed, change to approved
-    unimplemented!()
+    for cmd in cmds {
+        match cmd.as_ref() {
+            "r+" => {
+                info!("r+ for {}", pr.num);
+            },
+            "retry" => {
+                info!("retry for {}", pr.num);
+                // NB: if state failed, change to approved
+            },
+            _ => {},
+        }
+    }
 }
 
 pub fn queue() {

@@ -1,7 +1,7 @@
 use rustc_serialize::json;
 use hyper::server::{Request, Response};
 use std::io::Read;
-use super::{Pull, VolfResult, VolfError};
+use super::{Pull, VolfResult, VolfError, parse_commands};
 use super::server::{PullRequestState, ServerHandle};
 
 // -----------------------------------------------------------------------------
@@ -163,8 +163,9 @@ impl ServerHandle {
                       data.comment.body);
             }
             let mut prs = self.prs.lock().unwrap();
-            if let Some(pr) = prs.iter().find(|&pr| pr.num == prdata.number) {
+            if let Some(pr) = prs.iter_mut().find(|ref pr| pr.num == prdata.number) {
                 info!("found corresponding pr {}", pr.num);
+                parse_commands(pr, data.comment.body);
             } else {
                 warn!("ignoring comment on untracked pr {}", prdata.number);
             }
