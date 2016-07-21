@@ -14,7 +14,6 @@ env_logger = "*"
 hyper = "*"
 json = "0.9.1"
 log = "*"
-reroute = "*"
 rustc-serialize = "*"
 url = "*"
 

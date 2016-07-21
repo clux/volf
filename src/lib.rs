@@ -14,14 +14,13 @@ extern crate log;
 extern crate hyper;
 
 // re-exports
-pub use config::Config;
 pub use errors::{VolfError, VolfResult};
-pub use pullrequest::{Pull, PullRequestState};
-pub use github::webhook_handler;
+pub use pullrequest::{Pull};
 
 pub mod client;
+pub mod config;
+pub mod server;
 
-mod config;
 mod errors;
 mod github;
 mod pullrequest;

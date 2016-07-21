@@ -1,7 +1,8 @@
 use rustc_serialize::json;
 use hyper::server::{Request, Response};
 use std::io::Read;
-use super::{PullRequestState, Pull, VolfResult, VolfError};
+use super::{Pull, VolfResult, VolfError};
+use super::server::{PullRequestState, ServerHandle};
 
 // -----------------------------------------------------------------------------
 // Minor structs parts of various event types
@@ -134,55 +135,63 @@ pub struct Ping {
 // -----------------------------------------------------------------------------
 // event handlers
 
-fn handle_push(_: Push, _: &PullRequestState) -> VolfResult<()> {
-    // TODO: need `ref` key here to match up with a pr
-    Ok(())
-}
-
-fn handle_pull_request(data: PullRequest, state: &PullRequestState) -> VolfResult<()> {
-    info!("got pr {:?}", data);
-    let prdata = &data.pull_request;
-    if data.action == "opened" || data.action == "reopened" {
-        let pr = Pull::new(&data.repository.full_name, &prdata.title, data.number);
-        let mut prs = state.lock().unwrap();
-        prs.push(pr);
-    }
-    Ok(())
-}
-
-fn handle_issue_comment(data: IssueComment, state: &PullRequestState) -> VolfResult<()> {
-    info!("got issue comment {:?}", data);
-    if let Some(ref prdata) = data.issue.pull_request {
-        if data.action == "created" {
-            info!("Comment on {}#{} by {} - {}",
-                  data.repository.full_name,
-                  data.issue.number,
-                  data.sender.login,
-                  data.comment.body);
-        }
-        let mut prs = state.lock().unwrap();
-        if let Some(pr) = prs.iter().find(|&pr| pr.num == prdata.number) {
-            info!("found corresponding pr {}", pr.num);
-        } else {
-            warn!("ignoring comment on untracked pr {}", prdata.number);
+impl ServerHandle {
+    pub fn new(prs: PullRequestState) -> ServerHandle {
+        ServerHandle {
+            prs: prs,
         }
     }
-    Ok(())
-}
 
-fn handle_ping(data: Ping, _: &PullRequestState) -> VolfResult<()> {
-    info!("Ping - {}", data.zen);
-    Ok(())
-}
+    fn handle_push(&self, _: Push) -> VolfResult<()> {
+        // TODO: need `ref` key here to match up with a pr
+        Ok(())
+    }
 
-// multiplex events
-fn handle_event(state: &PullRequestState, event: &str, payload: &str) -> VolfResult<()> {
-    match event {
-        "issue_comment" => handle_issue_comment(try!(json::decode(&payload)), state),
-        "pull_request" => handle_pull_request(try!(json::decode(&payload)), state),
-        "push" => handle_push(try!(json::decode(&payload)), state),
-        "ping" => handle_ping(try!(json::decode(&payload)), state),
-        _ => Err(VolfError::SpammyGithub(event.into())),
+    fn handle_pull_request(&self, data: PullRequest) -> VolfResult<()> {
+        info!("got pr {:?}", data);
+        let prdata = &data.pull_request;
+        if data.action == "opened" || data.action == "reopened" {
+            let pr = Pull::new(&data.repository.full_name, data.number, &prdata.title);
+            let mut prs = self.prs.lock().unwrap();
+            prs.push(pr);
+        }
+        Ok(())
+    }
+
+    fn handle_issue_comment(&self, data: IssueComment) -> VolfResult<()> {
+        info!("got issue comment {:?}", data);
+        if let Some(ref prdata) = data.issue.pull_request {
+            if data.action == "created" {
+                info!("Comment on {}#{} by {} - {}",
+                      data.repository.full_name,
+                      data.issue.number,
+                      data.sender.login,
+                      data.comment.body);
+            }
+            let mut prs = self.prs.lock().unwrap();
+            if let Some(pr) = prs.iter().find(|&pr| pr.num == prdata.number) {
+                info!("found corresponding pr {}", pr.num);
+            } else {
+                warn!("ignoring comment on untracked pr {}", prdata.number);
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_ping(&self, data: Ping) -> VolfResult<()> {
+        info!("Ping - {}", data.zen);
+        Ok(())
+    }
+
+    /// Event multiplexer
+    pub fn handle_event(&self, event: &str, payload: &str) -> VolfResult<()> {
+        match event {
+            "issue_comment" => self.handle_issue_comment(try!(json::decode(&payload))),
+            "pull_request" => self.handle_pull_request(try!(json::decode(&payload))),
+            "push" => self.handle_push(try!(json::decode(&payload))),
+            "ping" => self.handle_ping(try!(json::decode(&payload))),
+            _ => Err(VolfError::SpammyGithub(event.into())),
+        }
     }
 }
 
@@ -200,26 +209,26 @@ header! {(XGithubEvent, "X-Github-Event") => [String]}
 /// unique id for each delivery
 header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
 
-/// server handler equivalent to a hyper::Handler
-///
-/// This is meant to be used by reroute and is thus not implementing Handler itself
 
-pub fn webhook_handler(state: &PullRequestState, mut req: Request, res: Response) {
-    let mut payload = String::new();
-    let headers = req.headers.clone();
-    if let (Some(&XGithubEvent(ref event)),
-            Some(&XGithubDelivery(ref id)),
-            Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
-                                                    headers.get::<XGithubDelivery>(),
-                                                    headers.get::<XHubSignature>()) {
-        if let Ok(_) = req.read_to_string(&mut payload) {
-            debug!("github event: {}", event);
-            // TODO: verify signature sha1 value == sha1(github.secret)
-            trace!("signature: {}", signature);
-            trace!("id {}", id);
-            let _ = handle_event(state, &event, &payload)
-                .map_err(|err| warn!("Failed to handle {} : {}", event, err));
+/// A Handler equivalent implementation for our state struct
+impl ServerHandle {
+    pub fn handle_webhook(&self, mut req: Request, res: Response) {
+        let mut payload = String::new();
+        let headers = req.headers.clone();
+        if let (Some(&XGithubEvent(ref event)),
+                Some(&XGithubDelivery(ref id)),
+                Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
+                                                        headers.get::<XGithubDelivery>(),
+                                                        headers.get::<XHubSignature>()) {
+            if let Ok(_) = req.read_to_string(&mut payload) {
+                debug!("github event: {}", event);
+                // TODO: verify signature sha1 value == sha1(github.secret)
+                trace!("signature: {}", signature);
+                trace!("id {}", id);
+                let _ = self.handle_event(&event, &payload)
+                    .map_err(|err| warn!("Failed to handle {} : {}", event, err));
+            }
         }
+        res.send(b"ok").ok();
     }
-    res.send(b"ok").ok();
 }

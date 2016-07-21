@@ -8,9 +8,7 @@ use errors::{VolfError, VolfResult};
 /// Repository data
 #[derive(RustcDecodable)]
 pub struct Repository {
-    /// Repository owner
-    pub owner: String,
-    /// Repository name
+    /// Repository owner + name
     pub name: String,
 
     /// Required status builds (with same name)

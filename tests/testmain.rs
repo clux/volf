@@ -1,18 +1,15 @@
 extern crate volf;
 extern crate hyper;
-extern crate reroute;
 
 #[macro_use]
 extern crate log;
 extern crate env_logger;
 
-use volf::{Config, PullRequestState};
+use volf::config::Config;
+use volf::server::{ServerHandle, PullRequestState};
 use volf::client::{Github, Credentials};
-use volf::webhook_handler;
 
 use hyper::{Server, Client};
-use hyper::server::{Request, Response};
-use reroute::{Captures, Router};
 
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -48,17 +45,13 @@ fn test_ping_event(token: String, hookid: u64) {
     use std::thread;
     use std::time::Duration;
 
-    let state: Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
+    let state: PullRequestState = Arc::new(Mutex::new(vec![]));
 
-    let child = thread::spawn(|| {
+    thread::spawn(move || {
         let cfg = Config::read().unwrap();
         let addr = format!("0.0.0.0:{}", cfg.port);
-        let mut router = Router::new();
-        router.post(r"/github", move |req: Request, res: Response, _: Captures| {
-            webhook_handler(&state.clone(), req, res)
-        });
-        router.finalize().unwrap();
-        Server::http(&addr.as_str()).unwrap().handle(router).unwrap();
+        let srv = ServerHandle::new(state.clone());
+        Server::http(&addr.as_str()).unwrap().handle(srv).unwrap();
     });
     let client = Client::new();
     let github = Github::new("volf-test",

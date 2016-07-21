@@ -4,16 +4,13 @@ extern crate clap;
 extern crate log;
 extern crate env_logger;
 extern crate hyper;
-extern crate reroute;
 
 use hyper::{Server, Client};
-use hyper::server::{Request, Response};
-use reroute::{Captures, Router};
 
 extern crate volf;
-use volf::{Config, PullRequestState};
+use volf::config::Config;
+use volf::server::{ServerHandle, PullRequestState};
 use volf::client::{Github, Credentials};
-use volf::webhook_handler;
 
 use clap::{Arg, App, AppSettings};
 use std::process;
@@ -55,22 +52,16 @@ fn main() {
                              Credentials::Token(token));
 
     // Application state is just a shared vector of PRs
-    let state: Arc<PullRequestState> = Arc::new(Mutex::new(vec![]));
+    let state: PullRequestState = Arc::new(Mutex::new(vec![]));
 
     // Synchronize state before starting the server if requested
     if args.is_present("synchronize") {
         unimplemented!();
     }
 
-    // Multiplex routes with reroute
-    let mut router = Router::new();
-    router.post(r"/github",
-                move |req: Request, res: Response, _: Captures| {
-                    webhook_handler(&state.clone(), req, res)
-                });
-    router.finalize().unwrap();
-
+    // Set up webhook server
+    let srv = ServerHandle::new(state.clone());
     let addr = format!("0.0.0.0:{}", config.port);
     info!("Listening on {}", addr);
-    Server::http(&addr.as_str()).unwrap().handle(router).unwrap();
+    Server::http(&addr.as_str()).unwrap().handle(srv).unwrap();
 }

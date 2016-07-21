@@ -7,8 +7,7 @@
   },
   "repositories": [
     {
-      "name": "volf",
-      "owner": "clux",
+      "name": "volf/clux",
       "required_builds": [],
       "optional_builds": [],
       "github_secret": "woot"

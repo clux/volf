@@ -7,7 +7,6 @@ dependencies = [
  "hyper 0.9.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "json 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "reroute 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -293,15 +292,6 @@ dependencies = [
 name = "regex-syntax"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "reroute"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "hyper 0.9.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.71 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "rustc-serialize"

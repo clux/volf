@@ -1,4 +1,3 @@
-use std::sync::Mutex;
 
 pub enum Progress {
     /// PR failed tests (to distinguish from Ready/Pending state)
@@ -46,15 +45,12 @@ pub struct Pull {
     unmergeable: bool,
 }
 
-/// Convenience alias for main application state
-pub type PullRequestState = Mutex<Vec<Pull>>;
-
 impl Pull {
-    pub fn new(full_name: &str, title: &str, num: u64) -> Pull {
+    pub fn new(full_name: &str, num: u64, title: &str) -> Pull {
         Pull {
             repo: full_name.into(),
-            title: title.into(),
             num: num,
+            title: title.into(),
             ..Default::default()
         }
     }
@@ -74,8 +70,12 @@ impl Pull {
                 // too late - need to cancel builds to stop it
             }
             _ => self.blocked = true,
-
         }
+    }
+
+    pub fn test(&mut self) {
+        self.state = Progress::Testing;
+        unimplemented!()
     }
 }
 // TODO: trait to Trigger builds?

@@ -6,8 +6,8 @@ use hyper::status::StatusCode;
 use std::io::Read;
 use url::Url;
 use json::{self, JsonValue};
-// TODO: intermediate error type?
-use {VolfResult, VolfError};
+use super::{VolfResult, VolfError};
+use super::config as cfg;
 
 const DEFAULT_HOST: &'static str = "https://api.github.com";
 
@@ -137,9 +137,22 @@ impl<'a> Github<'a> {
         self.post(&uri, &json::stringify(data))
     }
 
+    /// Update the hook
+    pub fn hook_update(&self, repo: &str, hook: u64) -> VolfResult<()> {
+        let uri = format!("repos/{}/hooks/{}", repo, hook);
+        let data = object!{
+            "content_type" => "json",
+            "url" => "http://109.146.235.224:54857/github",
+            "insecure_ssl" => "0",
+            "secret" => "hunter2"
+        };
+        try!(self.patch(&uri, &json::stringify(data)));
+        Ok(())
+    }
     /// Test the ping hook
     pub fn ping(&self, repo: &str, hook: u64) -> VolfResult<()> {
-        try!(self.post(&format!("repos/{}/hooks/{}/pings", repo, hook), ""));
+        let uri = format!("repos/{}/hooks/{}/pings", repo, hook);
+        try!(self.post(&uri, ""));
         Ok(())
     }
 }
