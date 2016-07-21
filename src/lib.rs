@@ -22,5 +22,5 @@ pub mod config;
 pub mod server;
 
 mod errors;
-mod github;
+mod webhook;
 mod pullrequest;
