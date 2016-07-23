@@ -156,7 +156,7 @@ impl ServerHandle {
         info!("got issue comment {:?}", data);
         if let Some(ref prdata) = data.issue.pull_request {
             if data.action == "created" {
-                info!("Comment on {}#{} by {} - {}",
+                debug!("Comment on {}#{} by {} - {}",
                       data.repository.full_name,
                       data.issue.number,
                       data.sender.login,
@@ -164,8 +164,8 @@ impl ServerHandle {
             }
             let mut prs = self.prs.lock().unwrap();
             if let Some(pr) = prs.iter_mut().find(|ref pr| pr.num == prdata.number) {
-                info!("found corresponding pr {}", pr.num);
-                parse_commands(pr, data.comment.body);
+                debug!("found corresponding pr {}", pr.num);
+                parse_commands(pr, data.comment.body, data.sender.login);
             } else {
                 warn!("ignoring comment on untracked pr {}", prdata.number);
             }

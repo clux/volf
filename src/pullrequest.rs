@@ -73,6 +73,15 @@ impl Pull {
         }
     }
 
+    pub fn retry(&mut self) -> bool {
+        if let Progress::Failure(_) = self.state {
+            self.state = Progress::Pending;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn test(&mut self) {
         self.state = Progress::Testing;
         unimplemented!()
@@ -82,19 +91,19 @@ impl Pull {
 // TODO: how to handle build results?
 
 
-pub fn parse_commands(pr: &mut Pull, comment: String) {
+pub fn parse_commands(pr: &mut Pull, comment: String, user: String) {
     let cmds = comment.split_whitespace().into_iter().filter(|&w| {
         w == "r+" || w == "retry" // keep it simple for now
     }).collect::<Vec<_>>();
 
     for cmd in cmds {
+        info!("{}#{} - {} cmd from {}", pr.repo, pr.num, cmd, user);
         match cmd.as_ref() {
             "r+" => {
-                info!("r+ for {}", pr.num);
+                pr.approve(&user);
             },
             "retry" => {
-                info!("retry for {}", pr.num);
-                // NB: if state failed, change to approved
+                pr.retry();
             },
             _ => {},
         }
