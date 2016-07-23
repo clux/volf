@@ -92,20 +92,23 @@ impl Pull {
 
 
 pub fn parse_commands(pr: &mut Pull, comment: String, user: String) {
-    let cmds = comment.split_whitespace().into_iter().filter(|&w| {
-        w == "r+" || w == "retry" // keep it simple for now
-    }).collect::<Vec<_>>();
+    let cmds = comment.split_whitespace()
+        .into_iter()
+        .filter(|&w| {
+            w == "r+" || w == "retry" // keep it simple for now
+        })
+        .collect::<Vec<_>>();
 
     for cmd in cmds {
         info!("{}#{} - {} cmd from {}", pr.repo, pr.num, cmd, user);
         match cmd.as_ref() {
             "r+" => {
                 pr.approve(&user);
-            },
+            }
             "retry" => {
                 pr.retry();
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }

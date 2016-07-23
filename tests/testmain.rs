@@ -7,7 +7,7 @@ extern crate env_logger;
 
 use volf::config::Config;
 use volf::server::{ServerHandle, PullRequestState};
-use volf::client::{Github, Credentials};
+use volf::client::Github;
 
 use hyper::{Server, Client};
 
@@ -49,9 +49,7 @@ fn test_ping_event() {
     let cfg = Config::read().unwrap();
     let state: PullRequestState = Arc::new(Mutex::new(vec![]));
     let client = Client::new();
-    let github = Arc::new(Github::new("volf-test",
-        client,
-        Credentials::Token(token)));
+    let github = Arc::new(Github::new("volf-test", client, token));
 
     let addr = format!("0.0.0.0:{}", cfg.port);
     let srv = ServerHandle::new(state.clone(), github.clone());

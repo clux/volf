@@ -11,48 +11,36 @@ use super::config as cfg;
 
 const DEFAULT_HOST: &'static str = "https://api.github.com";
 
-
-/// Various forms of authentication credentials supported by Github
-#[derive(Debug, PartialEq)]
-pub enum Credentials {
-    /// No authentication
-    None,
-    /// Oauth token string
-    /// https://developer.github.com/v3/#oauth2-token-sent-in-a-header
-    Token(String),
-    /// Oauth client id and secret
-    /// https://developer.github.com/v3/#oauth2-keysecret
-    Client(String, String),
-}
-
 /// Entry point interface for interacting with Github API
 #[derive(Debug)]
 pub struct Github {
     host: String,
     agent: String,
     client: Client,
-    credentials: Credentials,
+    token: String,
 }
 
 impl Github {
     /// Create a new Github instance
-    pub fn new<A>(agent: A, client: Client, credentials: Credentials) -> Github
-        where A: Into<String>
+    pub fn new<A, T>(agent: A, client: Client, token: T) -> Github
+        where A: Into<String>,
+              T: Into<String>
     {
-        Github::host(DEFAULT_HOST, agent, client, credentials)
+        Github::host(DEFAULT_HOST, agent, client, token)
     }
 
     /// Create a new Github instance hosted at a custom location.
     /// Useful for github enterprise installations ( yourdomain.com/api/v3/ )
-    pub fn host<H, A>(host: H, agent: A, client: Client, credentials: Credentials) -> Github
+    pub fn host<H, A, T>(host: H, agent: A, client: Client, token: T) -> Github
         where H: Into<String>,
-              A: Into<String>
+              A: Into<String>,
+              T: Into<String>
     {
         Github {
             host: host.into(),
             agent: agent.into(),
             client: client,
-            credentials: credentials,
+            token: token.into(),
         }
     }
 
@@ -60,20 +48,7 @@ impl Github {
     fn authenticate(&self, method: Method, uri: &str) -> RequestBuilder {
         let url = format!("{}/{}", self.host, uri);
         info!("req to uri {}", url);
-        match self.credentials {
-            Credentials::Token(ref token) => {
-                self.client.request(method, &url).header(Authorization(format!("token {}", token)))
-            }
-            Credentials::Client(ref id, ref secret) => {
-
-                let mut parsed = Url::parse(&url).unwrap();
-                parsed.query_pairs_mut()
-                    .append_pair("client_id", id)
-                    .append_pair("client_secret", secret);
-                self.client.request(method, parsed)
-            }
-            Credentials::None => self.client.request(method, &url),
-        }
+        self.client.request(method, &url).header(Authorization(format!("token {}", self.token)))
     }
     // TODO: accept v3 header
 
@@ -111,7 +86,7 @@ impl Github {
                     // allow empty bodies (from test ping)
                     Ok(json::Null)
                 }
-            },
+            }
         }
     }
 

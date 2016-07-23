@@ -24,6 +24,8 @@ pub enum VolfError {
 
     /// Config (volf.json) not found in current working directory
     MissingConfig,
+    /// Config exists when expected not to
+    ConfigExists,
     /// Misconfigured github webhooks - sends events we don't need
     SpammyGithub(String),
 }
@@ -37,6 +39,7 @@ impl fmt::Display for VolfError {
             VolfError::Parse2(ref err) => err.fmt(f),
             VolfError::Http(ref err) => err.fmt(f),
             VolfError::MissingConfig => write!(f, "Local config volf.json not found"),
+            VolfError::ConfigExists => write!(f, "Local config volf.json exists"),
             VolfError::SpammyGithub(ref s) => write!(f, "{} events should not be sent to volf", s),
             VolfError::Client { ref error, ref code } => {
                 write!(f, "{} - {}", code, json::stringify(error.clone()))

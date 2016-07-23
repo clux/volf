@@ -10,25 +10,51 @@ use hyper::{Server, Client};
 extern crate volf;
 use volf::config::Config;
 use volf::server::{ServerHandle, PullRequestState};
-use volf::client::{Github, Credentials};
+use volf::client::Github;
 
-use clap::{Arg, App, AppSettings};
+use clap::{Arg, App, AppSettings, SubCommand};
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::env;
+
+fn result_exit<T, E>(name: &str, x: Result<T, E>)
+    where E: std::fmt::Display
+{
+    let _ = x.map_err(|e| {
+        println!(""); // add a separator
+        error!("{} error: {}", name, e);
+        process::exit(1);
+    });
+    process::exit(0);
+}
 
 fn main() {
     let args = App::new("volf")
         .version(crate_version!())
         .setting(AppSettings::ColoredHelp)
+        .setting(AppSettings::ColorAuto)
+        .global_settings(&[AppSettings::ColoredHelp, AppSettings::ColorAuto])
         .about("volf")
         .arg(Arg::with_name("synchronize")
             .short("s")
             .long("synchronize")
             .help("Re-synchronize github state before starting"))
+        .subcommand(SubCommand::with_name("config")
+            .about("Generate or edit the local config")
+            .subcommand(SubCommand::with_name("edit"))
+            .subcommand(SubCommand::with_name("generate")))
         .get_matches();
 
     env_logger::init().unwrap();
+
+    if let Some(cfgargs) = args.subcommand_matches("config") {
+        if let Some(_) = cfgargs.subcommand_matches("generate") {
+            result_exit("generate", Config::generate());
+        }
+        if let Some(_) = cfgargs.subcommand_matches("edit") {
+            // TODO: open $EDITOR on config
+        }
+    }
 
     // Force config to exists before allowing remaining actions
     let config = Config::read()
@@ -47,10 +73,7 @@ fn main() {
         })
         .unwrap();
     let client = Client::new();
-    let github = Arc::new(Github::new(
-        format!("volf/{}", crate_version!()),
-        client,
-        Credentials::Token(token)));
+    let github = Arc::new(Github::new(format!("volf/{}", crate_version!()), client, token));
 
     // Application state is just a shared vector of PRs
     let state: PullRequestState = Arc::new(Mutex::new(vec![]));

@@ -157,10 +157,10 @@ impl ServerHandle {
         if let Some(ref prdata) = data.issue.pull_request {
             if data.action == "created" {
                 debug!("Comment on {}#{} by {} - {}",
-                      data.repository.full_name,
-                      data.issue.number,
-                      data.sender.login,
-                      data.comment.body);
+                       data.repository.full_name,
+                       data.issue.number,
+                       data.sender.login,
+                       data.comment.body);
             }
             let mut prs = self.prs.lock().unwrap();
             if let Some(pr) = prs.iter_mut().find(|ref pr| pr.num == prdata.number) {

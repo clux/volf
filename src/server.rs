@@ -16,10 +16,7 @@ pub struct ServerHandle {
 }
 impl ServerHandle {
     pub fn new(prs: PullRequestState, gh: Arc<Github>) -> ServerHandle {
-        ServerHandle {
-            prs: prs,
-            gh: gh,
-        }
+        ServerHandle { prs: prs, gh: gh }
     }
 }
 
@@ -28,8 +25,7 @@ impl Handler for ServerHandle {
         let uri = format!("{}", req.uri);
         if uri == "/github" && req.method == Method::Post {
             self.handle_webhook(req, res)
-        }
-        else {
+        } else {
             *res.status_mut() = StatusCode::MethodNotAllowed
         };
     }
