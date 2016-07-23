@@ -24,13 +24,11 @@ fn main() {
     has_config();
     println!("ok has_config");
 
-    let token = env::var("GITHUB_TOKEN").unwrap();
-    let hook : u64 = env::var("VOLF_HOOK").unwrap().parse().unwrap();
     let limited : bool = env::var("TRAVIS_LIMITED_TESTS").unwrap_or("false".into()).parse().unwrap();
 
     if !limited {
         println!("# test_ping_event");
-        test_ping_event(token, hook);
+        test_ping_event();
         println!("ok test_ping_event");
     }
 }
@@ -41,9 +39,12 @@ fn has_config() {
 }
 
 // Test API client and webhook server in one go (in a simple way)
-fn test_ping_event(token: String, hookid: u64) {
+fn test_ping_event() {
     use std::thread;
     use std::time::Duration;
+
+    let token = env::var("GITHUB_TOKEN").unwrap();
+    let hookid : u64 = env::var("VOLF_HOOK").unwrap().parse().unwrap();
 
     let cfg = Config::read().unwrap();
     let state: PullRequestState = Arc::new(Mutex::new(vec![]));
@@ -60,7 +61,7 @@ fn test_ping_event(token: String, hookid: u64) {
     });
 
     let r = github.ping("clux/volf", hookid);
-    assert!(r.is_ok(), "could ping our hook");
+    assert!(r.is_ok(), "could authenticate and ping our hook");
     // wait for github to forward event to this
     thread::sleep(Duration::from_millis(500));
 }
