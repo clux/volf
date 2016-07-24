@@ -33,12 +33,17 @@ fn main() {
         .about("Github webhook server and CI control bot")
         .version(crate_version!())
         .setting(AppSettings::ColoredHelp)
+        .setting(AppSettings::SubcommandRequiredElseHelp)
         .setting(AppSettings::ColorAuto)
+        .setting(AppSettings::DeriveDisplayOrder)
         .global_settings(&[AppSettings::ColoredHelp, AppSettings::ColorAuto])
-        .arg(Arg::with_name("synchronize")
-            .short("s")
-            .long("synchronize")
-            .help("Re-synchronize github state before starting"))
+        .subcommand(SubCommand::with_name("start")
+            .about("Start volf server")
+            .alias("run")
+            .arg(Arg::with_name("synchronize")
+                .short("s")
+                .long("synchronize")
+                .help("Re-synchronize github state before starting")))
         .subcommand(SubCommand::with_name("config")
             .about("Generate or edit the local config")
             .subcommand(SubCommand::with_name("edit")
@@ -80,8 +85,9 @@ fn main() {
     // Application state is just a shared vector of PRs
     let state: PullRequestState = Arc::new(Mutex::new(vec![]));
 
+    let serverargs = args.subcommand_matches("run").unwrap();
     // Synchronize state before starting the server if requested
-    if args.is_present("synchronize") {
+    if serverargs.is_present("synchronize") {
         unimplemented!();
     }
 

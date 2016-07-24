@@ -24,7 +24,7 @@ export RUST_LOG=info
 volf config generate
 volf config edit
 export GITHUB_TOKEN=personal_access_token_from_above
-volf
+volf start
 ```
 
 4. Wait for @clux to implement stuff.
@@ -36,7 +36,7 @@ When making changes:
 
 ```sh
 cargo build
-RUST_LOG=hyper=info,volf=debug volf
+RUST_LOG=hyper=info,volf=debug volf start
 cargo test
 cargo fmt
 ```
