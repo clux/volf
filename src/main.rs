@@ -16,6 +16,7 @@ use clap::{Arg, App, AppSettings, SubCommand};
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::env;
+use std::thread;
 
 fn result_exit<T, E>(name: &str, x: Result<T, E>)
     where E: std::fmt::Display
@@ -83,17 +84,26 @@ fn main() {
     let github = Arc::new(Github::new(format!("volf/{}", crate_version!()), client, token));
 
     // Application state is just a shared vector of PRs
-    let state: PullRequestState = Arc::new(Mutex::new(vec![]));
+    let prs: PullRequestState = Arc::new(Mutex::new(vec![]));
 
-    let serverargs = args.subcommand_matches("run").unwrap();
+    let serverargs = args.subcommand_matches("start").unwrap();
     // Synchronize state before starting the server if requested
     if serverargs.is_present("synchronize") {
-        unimplemented!();
+        for repo in &config.repositories {
+            let _ = repo.synchronize(github.clone(), &repo.name);
+        }
     }
 
     // Set up webhook server
-    let srv = ServerHandle::new(state.clone(), github);
-    let addr = format!("0.0.0.0:{}", config.port);
+    let port = config.port;
+    let srv = ServerHandle::new(prs.clone(), github, Arc::new(config));
+    // Start pull request queue thread first on the server object
+    //TODO: may be able to just run this off events in main webhook handler?
+    let srv2 = srv.clone();
+    thread::spawn(move || {
+        srv2.queue();
+    });
+    let addr = format!("0.0.0.0:{}", port);
     info!("Listening on {}", addr);
     Server::http(&addr.as_str()).unwrap().handle(srv).unwrap();
 }

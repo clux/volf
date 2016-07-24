@@ -1,4 +1,8 @@
+use std::cmp::Ordering;
+use super::server::ServerHandle;
+use super::config::Repository;
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Progress {
     /// PR failed tests (to distinguish from Ready/Pending state)
     ///
@@ -25,7 +29,7 @@ impl Default for Progress {
     fn default() -> Progress { Progress::Ready }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, PartialOrd)]
 pub struct Pull {
     /// The full owner/repo string
     repo: String,
@@ -43,6 +47,16 @@ pub struct Pull {
     blocked: bool,
     /// Whether this PR is unmergeable
     unmergeable: bool,
+}
+
+impl Ord for Pull {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.state != other.state {
+            self.state.cmp(&other.state)
+        } else {
+            self.blocked.cmp(&other.blocked)
+        }
+    }
 }
 
 impl Pull {
@@ -113,10 +127,31 @@ pub fn parse_commands(pr: &mut Pull, comment: String, user: String) {
     }
 }
 
-pub fn queue() {
-    // loop over Pull instances
-    // when no builds testing:
-    // trigger next build in line
-    // need to keep track if a PR is mergeable
-    unimplemented!()
+/// periodic modifier thread of PullRequestState
+impl ServerHandle {
+    pub fn queue_repo(&self, repo: &Repository) {
+        // loop over Pull instances
+        let mut prs = self.prs.lock().unwrap();
+        for pr in prs.iter_mut() {
+            if pr.repo != repo.name {
+                continue;
+            }
+            if pr.state == Progress::Testing {
+                return; // at most one thing testing at a time
+            }
+            if pr.state == Progress::Pending &&
+               !pr.unmergeable &&
+               pr.approver.is_some() &&
+               !pr.blocked
+            {
+                pr.test();
+            }
+        }
+
+    }
+    pub fn queue(&self) {
+        for repo in &self.cfg.repositories {
+            self.queue_repo(&repo);
+        }
+    }
 }

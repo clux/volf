@@ -5,10 +5,12 @@ use std::vec::Vec;
 use std::io::prelude::{Read, Write};
 use std::process::Command;
 use std::env;
+use std::sync::Arc;
 use errors::{VolfError, VolfResult};
+use super::client::Github;
 
 /// Repository data
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, RustcEncodable, Clone)]
 pub struct Repository {
     /// Repository owner + name
     pub name: String,
@@ -20,8 +22,22 @@ pub struct Repository {
     pub github_secret: String,
 }
 
+impl Repository {
+    pub fn synchronize(&self, gh: Arc<Github>, repo: &str) -> VolfResult<()> {
+        // First wipe state related to this repo!
+        // GET request to repos/{}/issues
+        let res = try!(gh.issues(repo));
+        println!("res {:?}", res);
+        // for each of those that are OPEN PRs:
+        //   - create Pull struct instance
+        //   - parse command on issue body
+        //   - parse command on each issue comment
+        Ok(())
+    }
+}
+
 /// Github specific tokens and data
-#[derive(RustcDecodable, RustcEncodable, Default)]
+#[derive(RustcDecodable, RustcEncodable, Default, Clone)]
 pub struct GithubData {
     /// Personal access token for volf app host
     pub access_token: String,
@@ -33,7 +49,7 @@ pub struct GithubData {
 
 /// Representation of `volf.json`
 #[allow(non_snake_case)]
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, RustcEncodable, Clone)]
 pub struct Config {
     /// Port to listen on
     pub port: u32,
@@ -86,7 +102,7 @@ impl Config {
 
     pub fn edit() -> VolfResult<()> {
         let editor = env::var("EDITOR").map_err(|e| {
-            error!("Could not find $EDITOR");
+            error!("Could not find $EDITOR - {}", e);
         }).unwrap();
         try!(Command::new(editor).arg("volf.json").status());
         Ok(())

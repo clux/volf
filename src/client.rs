@@ -7,7 +7,7 @@ use std::io::Read;
 use url::Url;
 use json::{self, JsonValue};
 use super::{VolfResult, VolfError};
-use super::config as cfg;
+//use super::config as cfg;
 
 const DEFAULT_HOST: &'static str = "https://api.github.com";
 
@@ -111,6 +111,13 @@ impl Github {
             "body" => message
         };
         self.post(&uri, &json::stringify(data))
+    }
+
+    /// Fetch issues
+    pub fn issues(&self, repo: &str) -> VolfResult<JsonValue> {
+        let uri = format!("repos/{}/issues", repo);
+        // TODO: only get OPEN issues
+        self.get(&uri)
     }
 
     /// Update the hook

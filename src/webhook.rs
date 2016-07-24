@@ -2,7 +2,7 @@ use rustc_serialize::json;
 use hyper::server::{Request, Response};
 use std::io::Read;
 use super::{Pull, VolfResult, VolfError, parse_commands};
-use super::server::{PullRequestState, ServerHandle};
+use super::server::ServerHandle;
 
 // -----------------------------------------------------------------------------
 // Minor structs parts of various event types
