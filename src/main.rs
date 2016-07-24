@@ -30,19 +30,21 @@ fn result_exit<T, E>(name: &str, x: Result<T, E>)
 
 fn main() {
     let args = App::new("volf")
+        .about("Github webhook server and CI control bot")
         .version(crate_version!())
         .setting(AppSettings::ColoredHelp)
         .setting(AppSettings::ColorAuto)
         .global_settings(&[AppSettings::ColoredHelp, AppSettings::ColorAuto])
-        .about("volf")
         .arg(Arg::with_name("synchronize")
             .short("s")
             .long("synchronize")
             .help("Re-synchronize github state before starting"))
         .subcommand(SubCommand::with_name("config")
             .about("Generate or edit the local config")
-            .subcommand(SubCommand::with_name("edit"))
-            .subcommand(SubCommand::with_name("generate")))
+            .subcommand(SubCommand::with_name("edit")
+                .about("Open the local config with $EDITOR"))
+            .subcommand(SubCommand::with_name("generate")
+                .about("Generate an empty config in current directory")))
         .get_matches();
 
     env_logger::init().unwrap();
@@ -52,7 +54,7 @@ fn main() {
             result_exit("generate", Config::generate());
         }
         if let Some(_) = cfgargs.subcommand_matches("edit") {
-            // TODO: open $EDITOR on config
+            result_exit("edit", Config::edit())
         }
     }
 

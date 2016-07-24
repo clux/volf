@@ -3,6 +3,8 @@ use std::path::Path;
 use std::fs;
 use std::vec::Vec;
 use std::io::prelude::{Read, Write};
+use std::process::Command;
+use std::env;
 use errors::{VolfError, VolfResult};
 
 /// Repository data
@@ -10,7 +12,6 @@ use errors::{VolfError, VolfResult};
 pub struct Repository {
     /// Repository owner + name
     pub name: String,
-
     /// Required status builds (with same name)
     pub required_builds: Vec<String>,
     /// Optional status builds (with same name)
@@ -80,6 +81,14 @@ impl Config {
         let mut f = try!(fs::File::create(&cfg_path));
         try!(write!(f, "{}\n", encoded));
         info!("Wrote config {}: \n{}", cfg_path.display(), encoded);
+        Ok(())
+    }
+
+    pub fn edit() -> VolfResult<()> {
+        let editor = env::var("EDITOR").map_err(|e| {
+            error!("Could not find $EDITOR");
+        }).unwrap();
+        try!(Command::new(editor).arg("volf.json").status());
         Ok(())
     }
 }

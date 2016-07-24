@@ -8,7 +8,7 @@ use hyper::status::StatusCode;
 /// The one and only error type for the volf library
 #[derive(Debug)]
 pub enum VolfError {
-    /// Errors propagated from the `fs` module
+    /// Miscellaneous errors propagated from `fs` and `process`
     Io(io::Error),
     /// Errors propagated from rustc_serialize
     Parse(rcjson::DecoderError),
