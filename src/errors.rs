@@ -1,6 +1,6 @@
 use std::fmt;
 use std::io;
-use rustc_serialize::json as rcjson;
+use serde_json;
 use json;
 use hyper::Error as HttpError;
 use hyper::status::StatusCode;
@@ -10,8 +10,8 @@ use hyper::status::StatusCode;
 pub enum VolfError {
     /// Miscellaneous errors propagated from `fs` and `process`
     Io(io::Error),
-    /// Errors propagated from rustc_serialize
-    Parse(rcjson::DecoderError),
+    /// Errors propagated from sedre
+    Parse(serde_json::error::Error),
     /// Errors from other rcjson library
     Parse2(json::Error),
     /// Errors propagated from hyper
@@ -52,8 +52,8 @@ impl From<io::Error> for VolfError {
     fn from(err: io::Error) -> VolfError { VolfError::Io(err) }
 }
 
-impl From<rcjson::DecoderError> for VolfError {
-    fn from(err: rcjson::DecoderError) -> VolfError { VolfError::Parse(err) }
+impl From<serde_json::error::Error> for VolfError {
+    fn from(err: serde_json::error::Error) -> VolfError { VolfError::Parse(err) }
 }
 
 impl From<json::Error> for VolfError {

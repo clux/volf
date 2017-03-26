@@ -1,4 +1,4 @@
-use rustc_serialize::json;
+use serde_json;
 use hyper::server::{Request, Response};
 use std::io::Read;
 use super::{Pull, VolfResult, VolfError, parse_commands};
@@ -7,18 +7,18 @@ use super::server::ServerHandle;
 // -----------------------------------------------------------------------------
 // Minor structs parts of various event types
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct User {
     /// Unique github user name
     pub login: String,
 }
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Repository {
     /// Owner and repo name joined by a slash
     pub full_name: String,
 }
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Comment {
     /// User creating the comment
     pub user: User,
@@ -26,13 +26,13 @@ pub struct Comment {
     pub body: String,
 }
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct PullRequestIssue {
     /// Unique PR number typically refernced by #n
     pub number: u64,
 }
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Issue {
     /// Unique PR number typically refernced by #n
     pub number: u64,
@@ -42,7 +42,7 @@ pub struct Issue {
     pub pull_request: Option<PullRequestIssue>,
 }
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct PullRequestRef {
     /// Ref name (only works with serde atm due to reserved keyword..)
     // _ref: String,
@@ -54,7 +54,7 @@ pub struct PullRequestRef {
     pub repo: Repository,
 }
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct PullRequestInner {
     /// Title text
     pub title: String,
@@ -72,7 +72,7 @@ pub struct PullRequestInner {
 // Main Event types handled
 
 /// Subset of github events that we need
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct PullRequest {
     /// Action taken (opened/reopened/closed/assigned/unassigned)
     pub action: String,
@@ -99,7 +99,7 @@ pub struct PullRequest {
 //    /// Sender of review comment
 //    pub sender: User,
 // }
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Push {
     /// Ref name  (only works with serde atm due to reserved keyword..)
     // _ref: String,
@@ -112,7 +112,7 @@ pub struct Push {
     /// User sending the change
     pub sender: User, // we only use login anyway
 }
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct IssueComment {
     /// Action taken (created is the only action we expect)
     pub action: String,
@@ -125,7 +125,7 @@ pub struct IssueComment {
     /// Sender of the comment
     pub sender: User,
 }
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Ping {
     /// Github Zen
     pub zen: String,
@@ -181,10 +181,10 @@ impl ServerHandle {
     /// Event multiplexer
     pub fn handle_event(&self, event: &str, payload: &str) -> VolfResult<()> {
         match event {
-            "issue_comment" => self.handle_issue_comment(try!(json::decode(&payload))),
-            "pull_request" => self.handle_pull_request(try!(json::decode(&payload))),
-            "push" => self.handle_push(try!(json::decode(&payload))),
-            "ping" => self.handle_ping(try!(json::decode(&payload))),
+            "issue_comment" => self.handle_issue_comment(serde_json::from_str(&payload)?),
+            "pull_request" => self.handle_pull_request(serde_json::from_str(&payload)?),
+            "push" => self.handle_push(serde_json::from_str(&payload)?),
+            "ping" => self.handle_ping(serde_json::from_str(&payload)?),
             _ => Err(VolfError::SpammyGithub(event.into())),
         }
     }

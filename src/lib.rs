@@ -1,8 +1,11 @@
 //! This is the rust doc for the `volf` *library* the github + jenkins interface
 //! that the `volf` binary relies on to maintain state.
 
-extern crate rustc_serialize;
 extern crate url;
+
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 
 #[macro_use]
 extern crate json;

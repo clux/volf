@@ -1,4 +1,5 @@
-use rustc_serialize::json;
+use serde_json;
+
 use std::path::Path;
 use std::fs;
 use std::vec::Vec;
@@ -10,7 +11,7 @@ use errors::{VolfError, VolfResult};
 use super::client::Github;
 
 /// Repository data
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Repository {
     /// Repository owner + name
     pub name: String,
@@ -37,7 +38,7 @@ impl Repository {
 }
 
 /// Github specific tokens and data
-#[derive(RustcDecodable, RustcEncodable, Default, Clone)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct GithubData {
     /// Personal access token for volf app host
     pub access_token: String,
@@ -49,7 +50,7 @@ pub struct GithubData {
 
 /// Representation of `volf.json`
 #[allow(non_snake_case)]
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     /// Port to listen on
     pub port: u32,
@@ -82,7 +83,7 @@ impl Config {
         let mut f = try!(fs::File::open(&cfg_path));
         let mut cfg_str = String::new();
         try!(f.read_to_string(&mut cfg_str));
-        let res = try!(json::decode(&cfg_str));
+        let res: Config = serde_json::from_str(&cfg_str)?;
         Ok(res)
     }
 
@@ -92,7 +93,7 @@ impl Config {
             return Err(VolfError::ConfigExists);
         }
         let cfg = Config::default();
-        let encoded = json::as_pretty_json(&cfg);
+        let encoded = serde_json::to_string_pretty(&cfg)?;
 
         let mut f = try!(fs::File::create(&cfg_path));
         try!(write!(f, "{}\n", encoded));
