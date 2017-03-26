@@ -21,7 +21,11 @@ pub struct ServerHandle {
 }
 impl ServerHandle {
     pub fn new(prs: PullRequestState, gh: Arc<Github>, cfg: Arc<Config>) -> ServerHandle {
-        ServerHandle { prs: prs, gh: gh, cfg: cfg }
+        ServerHandle {
+            prs: prs,
+            gh: gh,
+            cfg: cfg,
+        }
     }
 }
 

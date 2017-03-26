@@ -24,7 +24,7 @@ fn main() {
     has_config();
     println!("ok has_config");
 
-    let limited : bool = env::var("TRAVIS_LIMITED_TESTS").unwrap_or("false".into()).parse().unwrap();
+    let limited: bool = env::var("TRAVIS_LIMITED_TESTS").unwrap_or("false".into()).parse().unwrap();
 
     if !limited {
         println!("# test_ping_event");
@@ -44,7 +44,7 @@ fn test_ping_event() {
     use std::time::Duration;
 
     let token = env::var("GITHUB_TOKEN").unwrap();
-    let hookid : u64 = env::var("VOLF_HOOK").unwrap().parse().unwrap();
+    let hookid: u64 = env::var("VOLF_HOOK").unwrap().parse().unwrap();
 
     let cfg = Config::read().unwrap();
     let state: PullRequestState = Arc::new(Mutex::new(vec![]));
@@ -54,9 +54,7 @@ fn test_ping_event() {
     let addr = format!("0.0.0.0:{}", cfg.port);
     let srv = ServerHandle::new(state.clone(), github.clone());
 
-    thread::spawn(move || {
-        Server::http(&addr.as_str()).unwrap().handle(srv).unwrap();
-    });
+    thread::spawn(move || { Server::http(&addr.as_str()).unwrap().handle(srv).unwrap(); });
 
     let r = github.ping("clux/volf", hookid);
     assert!(r.is_ok(), "could authenticate and ping our hook");

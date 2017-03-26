@@ -212,9 +212,10 @@ impl ServerHandle {
         let headers = req.headers.clone();
         if let (Some(&XGithubEvent(ref event)),
                 Some(&XGithubDelivery(ref id)),
-                Some(&XHubSignature(ref signature))) = (headers.get::<XGithubEvent>(),
-                                                        headers.get::<XGithubDelivery>(),
-                                                        headers.get::<XHubSignature>()) {
+                Some(&XHubSignature(ref signature))) =
+            (headers.get::<XGithubEvent>(),
+             headers.get::<XGithubDelivery>(),
+             headers.get::<XHubSignature>()) {
             if let Ok(_) = req.read_to_string(&mut payload) {
                 debug!("github event: {}", event);
                 // TODO: verify signature sha1 value == sha1(github.secret)

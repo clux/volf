@@ -26,7 +26,9 @@ pub enum Progress {
 }
 
 impl Default for Progress {
-    fn default() -> Progress { Progress::Ready }
+    fn default() -> Progress {
+        Progress::Ready
+    }
 }
 
 #[derive(Default, PartialEq, Eq, PartialOrd)]
@@ -77,7 +79,9 @@ impl Pull {
             true
         }
     }
-    pub fn unblock(&mut self) { self.blocked = false; }
+    pub fn unblock(&mut self) {
+        self.blocked = false;
+    }
     pub fn block(&mut self) {
         match self.state {
             Progress::Testing => {
@@ -109,8 +113,8 @@ pub fn parse_commands(pr: &mut Pull, comment: String, user: String) {
     let cmds = comment.split_whitespace()
         .into_iter()
         .filter(|&w| {
-            w == "r+" || w == "retry" // keep it simple for now
-        })
+                    w == "r+" || w == "retry" // keep it simple for now
+                })
         .collect::<Vec<_>>();
 
     for cmd in cmds {
@@ -139,11 +143,8 @@ impl ServerHandle {
             if pr.state == Progress::Testing {
                 return; // at most one thing testing at a time
             }
-            if pr.state == Progress::Pending &&
-               !pr.unmergeable &&
-               pr.approver.is_some() &&
-               !pr.blocked
-            {
+            if pr.state == Progress::Pending && !pr.unmergeable && pr.approver.is_some() &&
+               !pr.blocked {
                 pr.test();
             }
         }

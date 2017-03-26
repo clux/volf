@@ -4,7 +4,7 @@ use hyper::method::Method;
 use hyper::header::{Authorization, ContentLength, UserAgent};
 use hyper::status::StatusCode;
 use std::io::Read;
-use url::Url;
+//use url::Url;
 use json::{self, JsonValue};
 use super::{VolfResult, VolfError};
 //use super::config as cfg;
@@ -54,15 +54,15 @@ impl Github {
 
     fn request(&self, method: Method, uri: &str, body: Option<&str>) -> VolfResult<JsonValue> {
         let builder = self.authenticate(method, uri).header(UserAgent(self.agent.to_owned()));
-        let mut res = try!(match body {
+        let mut res = match body {
             Some(ref bod) => builder.body(*bod).send(),
             _ => builder.send(),
-        });
+        }?;
         let mut body = match res.headers.clone().get::<ContentLength>() {
             Some(&ContentLength(len)) => String::with_capacity(len as usize),
             _ => String::new(),
         };
-        try!(res.read_to_string(&mut body));
+        res.read_to_string(&mut body)?;
         debug!("rev response {:#?} {:#?} {:#?}",
                res.status,
                res.headers,
@@ -75,13 +75,13 @@ impl Github {
             StatusCode::NotFound |
             StatusCode::Forbidden => {
                 Err(VolfError::Client {
-                    code: res.status,
-                    error: try!(json::parse(&body)),
-                })
+                        code: res.status,
+                        error: json::parse(&body)?,
+                    })
             }
             _ => {
                 if body.len() > 0 {
-                    Ok(try!(json::parse(&body)))
+                    Ok(json::parse(&body)?)
                 } else {
                     // allow empty bodies (from test ping)
                     Ok(json::Null)
@@ -90,7 +90,9 @@ impl Github {
         }
     }
 
-    fn get(&self, uri: &str) -> VolfResult<JsonValue> { self.request(Method::Get, uri, None) }
+    fn get(&self, uri: &str) -> VolfResult<JsonValue> {
+        self.request(Method::Get, uri, None)
+    }
 
     fn post(&self, uri: &str, message: &str) -> VolfResult<JsonValue> {
         self.request(Method::Post, uri, Some(message))
@@ -129,13 +131,13 @@ impl Github {
             "insecure_ssl" => "0",
             "secret" => "hunter2"
         };
-        try!(self.patch(&uri, &json::stringify(data)));
+        self.patch(&uri, &json::stringify(data))?;
         Ok(())
     }
     /// Test the ping hook
     pub fn ping(&self, repo: &str, hook: u64) -> VolfResult<()> {
         let uri = format!("repos/{}/hooks/{}/pings", repo, hook);
-        try!(self.post(&uri, ""));
+        self.post(&uri, "")?;
         Ok(())
     }
 }

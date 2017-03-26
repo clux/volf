@@ -27,7 +27,7 @@ impl Repository {
     pub fn synchronize(&self, gh: Arc<Github>, repo: &str) -> VolfResult<()> {
         // First wipe state related to this repo!
         // GET request to repos/{}/issues
-        let res = try!(gh.issues(repo));
+        let res = gh.issues(repo)?;
         println!("res {:?}", res);
         // for each of those that are OPEN PRs:
         //   - create Pull struct instance
@@ -68,7 +68,7 @@ impl Default for Config {
         Config {
             port: 54857,
             github: GithubData::default(),
-            repositories: vec![]
+            repositories: vec![],
         }
     }
 }
@@ -80,9 +80,9 @@ impl Config {
         if !cfg_path.exists() {
             return Err(VolfError::MissingConfig);
         }
-        let mut f = try!(fs::File::open(&cfg_path));
+        let mut f = fs::File::open(&cfg_path)?;
         let mut cfg_str = String::new();
-        try!(f.read_to_string(&mut cfg_str));
+        f.read_to_string(&mut cfg_str)?;
         let res: Config = serde_json::from_str(&cfg_str)?;
         Ok(res)
     }
@@ -95,17 +95,19 @@ impl Config {
         let cfg = Config::default();
         let encoded = serde_json::to_string_pretty(&cfg)?;
 
-        let mut f = try!(fs::File::create(&cfg_path));
-        try!(write!(f, "{}\n", encoded));
+        let mut f = fs::File::create(&cfg_path)?;
+        write!(f, "{}\n", encoded)?;
         info!("Wrote config {}: \n{}", cfg_path.display(), encoded);
         Ok(())
     }
 
     pub fn edit() -> VolfResult<()> {
-        let editor = env::var("EDITOR").map_err(|e| {
-            error!("Could not find $EDITOR - {}", e);
-        }).unwrap();
-        try!(Command::new(editor).arg("volf.json").status());
+        let editor = env::var("EDITOR")
+            .map_err(|e| {
+                         error!("Could not find $EDITOR - {}", e);
+                     })
+            .unwrap();
+        Command::new(editor).arg("volf.json").status()?;
         Ok(())
     }
 }

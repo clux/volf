@@ -22,10 +22,10 @@ fn result_exit<T, E>(name: &str, x: Result<T, E>)
     where E: std::fmt::Display
 {
     let _ = x.map_err(|e| {
-        println!(""); // add a separator
-        error!("{} error: {}", name, e);
-        process::exit(1);
-    });
+                          println!(""); // add a separator
+                          error!("{} error: {}", name, e);
+                          process::exit(1);
+                      });
     process::exit(0);
 }
 
@@ -67,18 +67,18 @@ fn main() {
     // Force config to exists before allowing remaining actions
     let config = Config::read()
         .map_err(|e| {
-            error!("Configuration error: {}", e);
-            println!("Ensure you have volf.json is valid");
-            process::exit(1);
-        })
+                     error!("Configuration error: {}", e);
+                     println!("Ensure you have volf.json is valid");
+                     process::exit(1);
+                 })
         .unwrap();
 
     // Create a github client from our credentials
     let token = env::var("GITHUB_TOKEN")
         .map_err(|_| {
-            error!("Missing GITHUB_TOKEN environment variable");
-            process::exit(1)
-        })
+                     error!("Missing GITHUB_TOKEN environment variable");
+                     process::exit(1)
+                 })
         .unwrap();
     let client = Client::new();
     let github = Arc::new(Github::new(format!("volf/{}", crate_version!()), client, token));
@@ -100,9 +100,7 @@ fn main() {
     // Start pull request queue thread first on the server object
     //TODO: may be able to just run this off events in main webhook handler?
     let srv2 = srv.clone();
-    thread::spawn(move || {
-        srv2.queue();
-    });
+    thread::spawn(move || { srv2.queue(); });
     let addr = format!("0.0.0.0:{}", port);
     info!("Listening on {}", addr);
     Server::http(&addr.as_str()).unwrap().handle(srv).unwrap();

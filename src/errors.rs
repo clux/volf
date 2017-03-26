@@ -49,19 +49,27 @@ impl fmt::Display for VolfError {
 }
 
 impl From<io::Error> for VolfError {
-    fn from(err: io::Error) -> VolfError { VolfError::Io(err) }
+    fn from(err: io::Error) -> VolfError {
+        VolfError::Io(err)
+    }
 }
 
 impl From<serde_json::error::Error> for VolfError {
-    fn from(err: serde_json::error::Error) -> VolfError { VolfError::Parse(err) }
+    fn from(err: serde_json::error::Error) -> VolfError {
+        VolfError::Parse(err)
+    }
 }
 
 impl From<json::Error> for VolfError {
-    fn from(err: json::Error) -> VolfError { VolfError::Parse2(err) }
+    fn from(err: json::Error) -> VolfError {
+        VolfError::Parse2(err)
+    }
 }
 
 impl From<HttpError> for VolfError {
-    fn from(error: HttpError) -> VolfError { VolfError::Http(error) }
+    fn from(error: HttpError) -> VolfError {
+        VolfError::Http(error)
+    }
 }
 
 /// Type alias to stop having to type out VolfError everywhere.
