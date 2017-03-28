@@ -8,6 +8,8 @@ use std::process::Command;
 use std::env;
 use std::sync::Arc;
 use errors::{VolfError, VolfResult};
+use super::{Pull, parse_commands};
+
 use hubcaps::Github;
 
 /// Repository data
@@ -24,20 +26,41 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn synchronize(&self, gh: Arc<Github>, repo: &str) -> VolfResult<()> {
-        use hubcaps::issues::{Issues, IssueListOptionsBuilder, State};
-        // First wipe state related to this repo!
+    pub fn synchronize(&self, gh: Arc<Github>, repo: &str) -> VolfResult<Vec<Pull>> {
+        use hubcaps::issues::{State};
+        use hubcaps::pulls::{PullRequests, PullListOptionsBuilder};
+        use hubcaps::comments::{Comments, CommentListOptions};
+        // TODO:  wipe state related to this repo!
+
         // GET request to repos/{}/issues
-        let params = IssueListOptionsBuilder::new().state(State::Open).desc().build();
+        let params = PullListOptionsBuilder::new().state(State::Open).build();
         let repoz = repo.split('/').collect::<Vec<_>>();
-        let issues = Issues::new(&gh, repoz[0], repoz[1]);
-        let res = issues.list(&params)?;
-        println!("res {:?}", res);
-        // for each of those that are OPEN PRs:
-        //   - create Pull struct instance
-        //   - parse command on issue body
-        //   - parse command on each issue comment
-        Ok(())
+        let issues = PullRequests::new(&gh, repoz[0], repoz[1]);
+        let issue_list = issues.list(&params)?;
+
+        // state to replace old state with..
+        let mut result_list = vec![];
+
+        for issue in issue_list {
+            println!("Found PR: {:?}", issue);
+            //   - create Pull struct instance
+            let mut pr = Pull::new("clux/volf", issue.id, &issue.title);
+
+            //   - parse command on issue body
+            let comments = Comments::new(&gh, repoz[0], repoz[1], issue.id);
+            let comment_list = comments.list(&CommentListOptions::default())?;
+
+            for comment in comment_list {
+                println!(" - {}: {}", comment.user.login, comment.body);
+                parse_commands(&mut pr, comment.body, comment.user.login);
+            }
+            // TODO: parse github reviews: https://developer.github.com/v3/pulls/reviews/
+            // need to add this to hubcaps - not supported atm it looks like.
+
+            result_list.push(pr);
+
+        }
+        Ok(result_list)
     }
 }
 
