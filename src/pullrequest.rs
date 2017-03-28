@@ -34,7 +34,7 @@ impl Default for Progress {
 #[derive(Default, PartialEq, Eq, PartialOrd)]
 pub struct Pull {
     /// The full owner/repo string
-    repo: String,
+    pub repo: String,
     /// Title of PR
     title: String,
     /// The pull request number

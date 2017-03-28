@@ -20,6 +20,8 @@ pub use pullrequest::{Pull, parse_commands};
 pub mod config;
 pub mod server;
 
+pub mod ci;
+
 mod errors;
 mod webhook;
 mod pullrequest;

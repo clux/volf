@@ -166,6 +166,7 @@ impl ServerHandle {
                        data.comment.body);
             }
             let mut prs = self.prs.lock().unwrap();
+            // TOOD: this check is insufficent, numbers aren't global?
             if let Some(pr) = prs.iter_mut().find(|ref pr| pr.num == prdata.number) {
                 debug!("found corresponding pr {}", pr.num);
                 parse_commands(pr, data.comment.body, data.sender.login);
