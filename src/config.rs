@@ -8,7 +8,7 @@ use std::process::Command;
 use std::env;
 use std::sync::Arc;
 use errors::{VolfError, VolfResult};
-use super::client::Github;
+use hubcaps::Github;
 
 /// Repository data
 #[derive(Serialize, Deserialize, Clone)]
@@ -25,9 +25,13 @@ pub struct Repository {
 
 impl Repository {
     pub fn synchronize(&self, gh: Arc<Github>, repo: &str) -> VolfResult<()> {
+        use hubcaps::issues::{Issues, IssueListOptionsBuilder, State};
         // First wipe state related to this repo!
         // GET request to repos/{}/issues
-        let res = gh.issues(repo)?;
+        let params = IssueListOptionsBuilder::new().state(State::Open).desc().build();
+        let repoz = repo.split('/').collect::<Vec<_>>();
+        let issues = Issues::new(&gh, repoz[0], repoz[1]);
+        let res = issues.list(&params)?;
         println!("res {:?}", res);
         // for each of those that are OPEN PRs:
         //   - create Pull struct instance

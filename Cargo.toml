@@ -14,12 +14,10 @@ env_logger = "*"
 hubcaps = "0.3.0"
 hyper = "*"
 hyper-native-tls = "0.2.2"
-json = "0.9.1"
 log = "*"
 serde = "0.9.11"
 serde_derive = "0.9.11"
 serde_json = "0.9.9"
-url = "*"
 
 [dependencies.github-rs]
 path = "../github-rs"

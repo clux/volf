@@ -87,6 +87,9 @@ pub struct PullRequest {
     /// Body of PR (not sent as a normal Comment struct)
     pub body: String,
 }
+
+// TODO: look into review events now; want to trigger on "all accepted" rather than r+
+
 // review comments (think these are only comments on specific lines)
 // ignore these for now
 // PullRequestReviewComment {

@@ -38,6 +38,25 @@ fn has_config() {
     assert!(cfg.is_ok(), "config was readable")
 }
 
+
+// TODO: do something like this..
+//pub fn hook_update(&self, repo: &str, hook: u64) -> VolfResult<()> {
+//    let uri = format!("repos/{}/hooks/{}", repo, hook);
+//    let data = object!{
+//        "content_type" => "json",
+//        "url" => "http://109.146.235.224:54857/github",
+//        "insecure_ssl" => "0",
+//        "secret" => "hunter2"
+//    };
+//    self.patch(&uri, &json::stringify(data))?;
+//    Ok(())
+//}
+//pub fn ping(&self, repo: &str, hook: u64) -> VolfResult<()> {
+//    let uri = format!("repos/{}/hooks/{}/pings", repo, hook);
+//    self.post(&uri, "")?;
+//    Ok(())
+//}
+
 // Test API client and webhook server in one go (in a simple way)
 fn test_ping_event() {
     use std::thread;

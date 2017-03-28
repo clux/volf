@@ -61,6 +61,7 @@ impl Ord for Pull {
     }
 }
 
+// TODO: Cow
 impl Pull {
     pub fn new(full_name: &str, num: u64, title: &str) -> Pull {
         Pull {
@@ -78,6 +79,10 @@ impl Pull {
             self.state = Progress::Pending;
             true
         }
+    }
+
+    pub fn reset(&mut self) {
+        // TODO: mixin with default somehow?
     }
     pub fn unblock(&mut self) {
         self.blocked = false;
@@ -113,7 +118,7 @@ pub fn parse_commands(pr: &mut Pull, comment: String, user: String) {
     let cmds = comment.split_whitespace()
         .into_iter()
         .filter(|&w| {
-                    w == "r+" || w == "retry" // keep it simple for now
+                    w == "r+" || w == "retry" || w == "sync"
                 })
         .collect::<Vec<_>>();
 
@@ -125,6 +130,9 @@ pub fn parse_commands(pr: &mut Pull, comment: String, user: String) {
             }
             "retry" => {
                 pr.retry();
+            }
+            "reset" => {
+                pr.reset();
             }
             _ => {}
         }

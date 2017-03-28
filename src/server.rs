@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 
 use super::Pull;
 use super::config::Config;
-use super::client::Github;
+//use super::client::Github;
+use hubcaps::Github;
 
 /// Convenience alias for main application state
 pub type PullRequestState = Arc<Mutex<Vec<Pull>>>;

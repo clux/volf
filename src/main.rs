@@ -3,14 +3,20 @@ extern crate clap;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+
+extern crate hubcaps;
 extern crate hyper;
+extern crate hyper_native_tls;
 
 use hyper::{Server, Client};
+use hyper::net::HttpsConnector;
+use hyper_native_tls::NativeTlsClient;
+use hubcaps::{Credentials, Github};
+
 
 extern crate volf;
 use volf::config::Config;
 use volf::server::{ServerHandle, PullRequestState};
-use volf::client::Github;
 
 use clap::{Arg, App, AppSettings, SubCommand};
 use std::process;
@@ -74,14 +80,18 @@ fn main() {
         .unwrap();
 
     // Create a github client from our credentials
+    // TODO: env secrets -> struct (there's a nice crate for it)
     let token = env::var("GITHUB_TOKEN")
         .map_err(|_| {
                      error!("Missing GITHUB_TOKEN environment variable");
                      process::exit(1)
                  })
         .unwrap();
-    let client = Client::new();
-    let github = Arc::new(Github::new(format!("volf/{}", crate_version!()), client, token));
+
+    let github = Arc::new(Github::new(format!("volf/{}", crate_version!()),
+        Client::with_connector(HttpsConnector::new(NativeTlsClient::new().unwrap())),
+        Credentials::Token(token)
+    ));
 
     // Application state is just a shared vector of PRs
     let prs: PullRequestState = Arc::new(Mutex::new(vec![]));
