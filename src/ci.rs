@@ -1,4 +1,4 @@
-use errors::{VolfResult};
+use errors::VolfResult;
 
 // NB: Results expected to be notified back to the server.rs
 

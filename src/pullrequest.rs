@@ -8,7 +8,7 @@ pub enum Progress {
     ///
     /// This means that the PR is still approved at current head, but build failed.
     /// A retry is allowed without further approval.
-    Failure(String),
+    Failure,
     /// PR in its initial state
     ///
     /// Every PR gets shifted to Ready after a Push event
@@ -23,12 +23,14 @@ pub enum Progress {
     /// fail (and so move to Failure state),
     /// or simply time out after an hour (and move to Failure state).
     Testing,
+    /// PR succeeded and is about to be merged
+    ///
+    /// This state should almost never be perceived, it's just used intenally.
+    Success,
 }
 
 impl Default for Progress {
-    fn default() -> Progress {
-        Progress::Ready
-    }
+    fn default() -> Progress { Progress::Ready }
 }
 
 #[derive(Default, PartialEq, Eq, PartialOrd)]
@@ -81,12 +83,20 @@ impl Pull {
         }
     }
 
+
     pub fn reset(&mut self) {
-        // TODO: mixin with default somehow?
-    }
-    pub fn unblock(&mut self) {
+        self.state = Progress::Ready;
+        self.approver = None;
         self.blocked = false;
     }
+    pub fn failure(&mut self) { self.state = Progress::Failure; }
+    pub fn success(&mut self) {
+        self.state = Progress::Success;
+        // TODO: merge from here or in handle_build_result?
+    }
+
+
+    pub fn unblock(&mut self) { self.blocked = false; }
     pub fn block(&mut self) {
         match self.state {
             Progress::Testing => {
@@ -97,7 +107,7 @@ impl Pull {
     }
 
     pub fn retry(&mut self) -> bool {
-        if let Progress::Failure(_) = self.state {
+        if let Progress::Failure = self.state {
             self.state = Progress::Pending;
             true
         } else {
@@ -115,11 +125,10 @@ impl Pull {
 
 
 pub fn parse_commands(pr: &mut Pull, comment: String, user: String) {
-    let cmds = comment.split_whitespace()
+    let cmds = comment
+        .split_whitespace()
         .into_iter()
-        .filter(|&w| {
-                    w == "r+" || w == "retry" || w == "sync"
-                })
+        .filter(|&w| w == "r+" || w == "retry" || w == "sync")
         .collect::<Vec<_>>();
 
     for cmd in cmds {

@@ -28,10 +28,10 @@ fn result_exit<T, E>(name: &str, x: Result<T, E>)
     where E: std::fmt::Display
 {
     let _ = x.map_err(|e| {
-                          println!(""); // add a separator
-                          error!("{} error: {}", name, e);
-                          process::exit(1);
-                      });
+        println!(""); // add a separator
+        error!("{} error: {}", name, e);
+        process::exit(1);
+    });
     process::exit(0);
 }
 
@@ -73,25 +73,26 @@ fn main() {
     // Force config to exists before allowing remaining actions
     let config = Config::read()
         .map_err(|e| {
-                     error!("Configuration error: {}", e);
-                     println!("Ensure you have volf.json is valid");
-                     process::exit(1);
-                 })
+            error!("Configuration error: {}", e);
+            println!("Ensure you have volf.json is valid");
+            process::exit(1);
+        })
         .unwrap();
 
     // Create a github client from our credentials
     // TODO: env secrets -> struct (there's a nice crate for it)
     let token = env::var("GITHUB_TOKEN")
         .map_err(|_| {
-                     error!("Missing GITHUB_TOKEN environment variable");
-                     process::exit(1)
-                 })
+            error!("Missing GITHUB_TOKEN environment variable");
+            process::exit(1)
+        })
         .unwrap();
 
-    let github = Arc::new(Github::new(format!("volf/{}", crate_version!()),
-        Client::with_connector(HttpsConnector::new(NativeTlsClient::new().unwrap())),
-        Credentials::Token(token)
-    ));
+    let github =
+        Arc::new(Github::new(format!("volf/{}", crate_version!()),
+                             Client::with_connector(HttpsConnector::new(NativeTlsClient::new()
+                                                                            .unwrap())),
+                             Credentials::Token(token)));
 
     // Application state is just a shared vector of PRs
     let prs: PullRequestState = Arc::new(Mutex::new(vec![]));

@@ -6,7 +6,7 @@ use std::io::Read;
 
 use super::Pull;
 use super::config::Config;
-use super::{VolfResult};
+use super::VolfResult;
 
 use serde_json;
 use hubcaps::Github;
@@ -71,10 +71,12 @@ pub struct BuildResult {
 impl ServerHandle {
     fn handle_build_result(&self, payload: &str) -> VolfResult<()> {
         // 1. deserialize payload into BuildResult
-        let res : BuildResult = serde_json::from_str(&payload)?;
+        let res: BuildResult = serde_json::from_str(&payload)?;
         // 2. match up build name to a PR
         let mut prs = self.prs.lock().unwrap();
-        if let Some(pr) = prs.iter_mut().find(|ref pr| pr.num == res.number && pr.repo == res.repo) {
+        if let Some(pr) = prs.iter_mut().find(|ref pr| {
+            pr.num == res.number && pr.repo == res.repo
+        }) {
             debug!("found corresponding pr {}", pr.num);
             // TODO: call status API to set required status on head_sha
             if res.success {
@@ -82,7 +84,7 @@ impl ServerHandle {
                 //  - if nothing left:
                 //      - call pr.success() (merges and closes)
             } else {
-                //pr.failure(); // move queue to next pr
+                pr.failure(); // move queue to next pr
             }
         } else {
             warn!("ignoring comment on untracked pr {}", res.number);
@@ -95,7 +97,7 @@ impl ServerHandle {
         if let Ok(_) = req.read_to_string(&mut payload) {
             debug!("ci result: {}", payload);
             let _ = self.handle_build_result(&payload)
-                    .map_err(|err| warn!("Failed to handle ci res {}", err));
+                .map_err(|err| warn!("Failed to handle ci res {}", err));
         }
         res.send(b"ok").ok();
     }

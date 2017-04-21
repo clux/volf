@@ -27,7 +27,7 @@ pub struct Repository {
 
 impl Repository {
     pub fn synchronize(&self, gh: Arc<Github>, repo: &str) -> VolfResult<Vec<Pull>> {
-        use hubcaps::issues::{State};
+        use hubcaps::issues::State;
         use hubcaps::pulls::{PullRequests, PullListOptionsBuilder};
         use hubcaps::comments::{Comments, CommentListOptions};
         // TODO:  wipe state related to this repo!
@@ -131,8 +131,8 @@ impl Config {
     pub fn edit() -> VolfResult<()> {
         let editor = env::var("EDITOR")
             .map_err(|e| {
-                         error!("Could not find $EDITOR - {}", e);
-                     })
+                error!("Could not find $EDITOR - {}", e);
+            })
             .unwrap();
         Command::new(editor).arg("volf.json").status()?;
         Ok(())

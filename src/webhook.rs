@@ -90,18 +90,7 @@ pub struct PullRequest {
 
 // TODO: look into review events now; want to trigger on "all accepted" rather than r+
 
-// review comments (think these are only comments on specific lines)
-// ignore these for now
-// PullRequestReviewComment {
-//    /// Action taken (created is the only event we expect)
-//    pub action: String,
-//    /// Comment info
-//    pub comment: Comment,
-//    /// Repository of review comment
-//    pub repository: Repository,
-//    /// Sender of review comment
-//    pub sender: User,
-// }
+
 #[derive(Deserialize, Debug)]
 pub struct Push {
     /// Ref name  (only works with serde atm due to reserved keyword..)
@@ -163,11 +152,15 @@ impl ServerHandle {
                        data.repository.full_name,
                        data.issue.number,
                        data.sender.login,
-                       data.comment.body);
+                       data.comment.body,
+                );
             }
             let mut prs = self.prs.lock().unwrap();
-            // TOOD: this check is insufficent, numbers aren't global?
-            if let Some(pr) = prs.iter_mut().find(|ref pr| pr.num == prdata.number) {
+
+            if let Some(pr) = prs.iter_mut()
+                   .find(|ref pr| {
+                pr.num == prdata.number && pr.repo == data.repository.full_name
+            }) {
                 debug!("found corresponding pr {}", pr.num);
                 parse_commands(pr, data.comment.body, data.sender.login);
             } else {

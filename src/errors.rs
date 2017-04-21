@@ -16,7 +16,6 @@ pub enum VolfError {
     /// Github API errors from `hubcaps` client
     Client(HubError),
 
-
     /// Config (volf.json) not found in current working directory
     MissingConfig,
     /// Config exists when expected not to
@@ -41,27 +40,19 @@ impl fmt::Display for VolfError {
 }
 
 impl From<io::Error> for VolfError {
-    fn from(err: io::Error) -> VolfError {
-        VolfError::Io(err)
-    }
+    fn from(err: io::Error) -> VolfError { VolfError::Io(err) }
 }
 
 impl From<serde_json::error::Error> for VolfError {
-    fn from(err: serde_json::error::Error) -> VolfError {
-        VolfError::Parse(err)
-    }
+    fn from(err: serde_json::error::Error) -> VolfError { VolfError::Parse(err) }
 }
 
 impl From<HubError> for VolfError {
-    fn from(err: HubError) -> VolfError {
-        VolfError::Client(err)
-    }
+    fn from(err: HubError) -> VolfError { VolfError::Client(err) }
 }
 
 impl From<HttpError> for VolfError {
-    fn from(error: HttpError) -> VolfError {
-        VolfError::Http(error)
-    }
+    fn from(error: HttpError) -> VolfError { VolfError::Http(error) }
 }
 
 /// Type alias to stop having to type out VolfError everywhere.
